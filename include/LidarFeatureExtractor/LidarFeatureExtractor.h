@@ -10,6 +10,25 @@
 #include <future>
 #include "opencv2/core.hpp"
 #include "segment/segment.hpp"
+
+enum class FEATURE_TYPE : int
+{
+    NONE = 0,
+    FLAT = 1,//BEST_FLAT's neighbor
+    BETTER_FLAT = 2,
+    BEST_FLAT = 3,
+    BREAK_POINT = 100,
+    BREAK_POINT_OUTLIER = 101,
+    INTERSACT_PIONT = 150,
+    STRONG_REFLECT_PIONT = 300
+};
+
+enum class ANGLE_TYPE : int
+{
+    NONE = 0,
+    FLAT = 1,
+};
+
 class LidarFeatureExtractor{
     typedef pcl::PointXYZINormal PointType;
 public:
@@ -102,7 +121,7 @@ private:
     std::vector<pcl::PointCloud<PointType>::Ptr> vlines;
 
     /** \brief store corner feature index of each line */
-    std::vector<std::vector<int>> vcorner;
+    std::vector<std::vector<int>> vcorner;//vector<line_corners>
 
     /** \brief store surf feature index of each line */
     std::vector<std::vector<int>> vsurf;

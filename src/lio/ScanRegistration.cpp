@@ -18,7 +18,6 @@ bool Feature_Mode = false;
 bool Use_seg = false;
 
 void lidarCallBackHorizon(const livox_ros_driver::CustomMsgConstPtr &msg) {
-
   sensor_msgs::PointCloud2 msg2;
 
   if(Use_seg){
@@ -57,38 +56,37 @@ void lidarCallBackHAP(const livox_ros_driver::CustomMsgConstPtr &msg) {
 
 void lidarCallBackPc2(const sensor_msgs::PointCloud2ConstPtr &msg) {
     pcl::PointCloud<pcl::PointXYZI>::Ptr laser_cloud(new pcl::PointCloud<pcl::PointXYZI>());
-    pcl::PointCloud<pcl::PointXYZINormal>::Ptr laser_cloud_custom(new pcl::PointCloud<pcl::PointXYZINormal>());
-
     pcl::fromROSMsg(*msg, *laser_cloud);
 
-    for (uint64_t i = 0; i < laser_cloud->points.size(); i++)
-    {
-        auto p=laser_cloud->points.at(i);
+    pcl::PointCloud<pcl::PointXYZINormal>::Ptr laser_cloud_custom(new pcl::PointCloud<pcl::PointXYZINormal>());
+    laser_cloud_custom->reserve(laser_cloud->points.size());
+
+    for (uint64_t i = 0; i < laser_cloud->points.size(); i++) {
+        const auto& p = laser_cloud->points.at(i);
+        if(Lidar_Type == 0||Lidar_Type == 1) {
+            if(p.x < 0.01)
+                continue;
+        }
+        else if(Lidar_Type == 2) {
+            if(std::fabs(p.x) < 0.01)
+                continue;
+        }
         pcl::PointXYZINormal p_custom;
-        if(Lidar_Type == 0||Lidar_Type == 1)
-        {
-            if(p.x < 0.01) continue;
-        }
-        else if(Lidar_Type == 2)
-        {
-            if(std::fabs(p.x) < 0.01) continue;
-        }
         p_custom.x=p.x;
         p_custom.y=p.y;
         p_custom.z=p.z;
         p_custom.intensity=p.intensity;
-        p_custom.normal_x=float (i)/float(laser_cloud->points.size());
-        p_custom.normal_y=i%4;
+        p_custom.normal_x=float (i)/float(laser_cloud->points.size());//used in motion undistortion
+        p_custom.normal_y=i%4;//which line
         laser_cloud_custom->points.push_back(p_custom);
     }
 
     lidarFeatureExtractor->FeatureExtract_Mid(laser_cloud_custom, laserConerCloud, laserSurfCloud);
 
-    sensor_msgs::PointCloud2 laserCloudMsg;
-    pcl::toROSMsg(*laser_cloud_custom, laserCloudMsg);
-    laserCloudMsg.header = msg->header;
-    pubFullLaserCloud.publish(laserCloudMsg);
-
+    sensor_msgs::PointCloud2 out;
+    pcl::toROSMsg(*laser_cloud_custom, out);
+    out.header = msg->header;
+    pubFullLaserCloud.publish(out);
 }
 
 int main(int argc, char** argv)

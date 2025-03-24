@@ -26,7 +26,13 @@ find_package(catkin REQUIRED COMPONENTS
   	     std_srvs)
 
 find_package(Eigen3 REQUIRED)
-find_package(PCL REQUIRED)
+#set(PCL_DIR "/usr/lib/x86_64-linux-gnu/cmake/pcl")
+find_package(PCL 1.8.1 EXACT REQUIRED)
+include_directories(${PCL_INCLUDE_DIRS})
+link_directories(${PCL_LIBRARY_DIRS})
+add_definitions(${PCL_DEFINITIONS})
+message("PCL_INCLUDE_DIRS= ${PCL_INCLUDE_DIRS}")
+message("PCL_DIR= ${PCL_DIR}")
 find_package(Ceres REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(SuiteSparse REQUIRED)
@@ -54,7 +60,11 @@ add_executable (ScanRegistration
 		src/lio/LidarFeatureExtractor.cpp
         	src/segment/segment.cpp
         	src/segment/pointsCorrect.cpp)
-target_link_libraries(ScanRegistration ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES})
+target_link_libraries(ScanRegistration
+		${catkin_LIBRARIES}
+		${PCL_LIBRARIES}
+		${OpenCV_LIBRARIES}
+		pcl_kdtree)
 
 add_executable (PoseEstimation 
 		src/lio/PoseEstimation.cpp
@@ -62,7 +72,11 @@ add_executable (PoseEstimation
 		src/lio/IMUIntegrator.cpp
 		src/lio/ceresfunc.cpp 
 		src/lio/Map_Manager.cpp)
-target_link_libraries(PoseEstimation ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${CERES_LIBRARIES})
+target_link_libraries(PoseEstimation
+		${catkin_LIBRARIES}
+		${PCL_LIBRARIES}
+		${CERES_LIBRARIES}
+		pcl_kdtree)
 
 
 
