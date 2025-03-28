@@ -43,62 +43,62 @@ Estimator::Estimator(const float& filter_corner, const float& filter_surf){
   threadMap = std::thread(&Estimator::threadMapIncrement, this);
 }
 
-Estimator::~Estimator(){
-  delete map_manager;
+Estimator::~Estimator() {
+	delete map_manager;
 }
 
-[[noreturn]] void Estimator::threadMapIncrement(){
-  pcl::PointCloud<PointType>::Ptr laserCloudCorner(new pcl::PointCloud<PointType>);
-  pcl::PointCloud<PointType>::Ptr laserCloudSurf(new pcl::PointCloud<PointType>);
-  pcl::PointCloud<PointType>::Ptr laserCloudNonFeature(new pcl::PointCloud<PointType>);
-  pcl::PointCloud<PointType>::Ptr laserCloudCorner_to_map(new pcl::PointCloud<PointType>);
-  pcl::PointCloud<PointType>::Ptr laserCloudSurf_to_map(new pcl::PointCloud<PointType>);
-  pcl::PointCloud<PointType>::Ptr laserCloudNonFeature_to_map(new pcl::PointCloud<PointType>);
-  Eigen::Matrix4d transform;
-  while(true){
-    std::unique_lock<std::mutex> locker(mtx_Map);
-    if(!laserCloudCornerForMap->empty()){
+[[noreturn]] void 
+Estimator::threadMapIncrement() {
+	auto laserCloudCorner				= makeShared<pcl::PointCloud<PointType>>();
+	auto laserCloudSurf					= makeShared<pcl::PointCloud<PointType>>();
+	auto laserCloudNonFeature			= makeShared<pcl::PointCloud<PointType>>();
+	auto laserCloudCorner_to_map		= makeShared<pcl::PointCloud<PointType>>();
+	auto laserCloudSurf_to_map			= makeShared<pcl::PointCloud<PointType>>();
+	auto laserCloudNonFeature_to_map	= makeShared<pcl::PointCloud<PointType>>();
+	Eigen::Matrix4d transform;
+	while(true) {
+		std::unique_lock<std::mutex> locker(mtx_Map);
+		if(!laserCloudCornerForMap->empty()) {
+			map_update_ID ++;
 
-      map_update_ID ++;
+			featureAssociateToMap(laserCloudCornerForMap,
+								laserCloudSurfForMap,
+								laserCloudNonFeatureForMap,
+								laserCloudCorner,
+								laserCloudSurf,
+								laserCloudNonFeature,
+								transformForMap);
+			laserCloudCornerForMap->clear();
+			laserCloudSurfForMap->clear();
+			laserCloudNonFeatureForMap->clear();
+			transform = transformForMap;
+			locker.unlock();
 
-      map_manager->featureAssociateToMap(laserCloudCornerForMap,
-                                         laserCloudSurfForMap,
-                                         laserCloudNonFeatureForMap,
-                                         laserCloudCorner,
-                                         laserCloudSurf,
-                                         laserCloudNonFeature,
-                                         transformForMap);
-      laserCloudCornerForMap->clear();
-      laserCloudSurfForMap->clear();
-      laserCloudNonFeatureForMap->clear();
-      transform = transformForMap;
-      locker.unlock();
+			*laserCloudCorner_to_map += *laserCloudCorner;
+			*laserCloudSurf_to_map += *laserCloudSurf;
+			*laserCloudNonFeature_to_map += *laserCloudNonFeature;
 
-      *laserCloudCorner_to_map += *laserCloudCorner;
-      *laserCloudSurf_to_map += *laserCloudSurf;
-      *laserCloudNonFeature_to_map += *laserCloudNonFeature;
+			laserCloudCorner->clear();
+			laserCloudSurf->clear();
+			laserCloudNonFeature->clear();
 
-      laserCloudCorner->clear();
-      laserCloudSurf->clear();
-      laserCloudNonFeature->clear();
+			if(map_update_ID % map_skip_frame == 0){
+				map_manager->MapIncrement(laserCloudCorner_to_map, 
+										laserCloudSurf_to_map, 
+										laserCloudNonFeature_to_map,
+										transform);
 
-      if(map_update_ID % map_skip_frame == 0){
-        map_manager->MapIncrement(laserCloudCorner_to_map, 
-                                  laserCloudSurf_to_map, 
-                                  laserCloudNonFeature_to_map,
-                                  transform);
+				laserCloudCorner_to_map->clear();
+				laserCloudSurf_to_map->clear();
+				laserCloudNonFeature_to_map->clear();
+			}
+		
+		} else
+			locker.unlock();
 
-        laserCloudCorner_to_map->clear();
-        laserCloudSurf_to_map->clear();
-        laserCloudNonFeature_to_map->clear();
-      }
-      
-    }else
-      locker.unlock();
-
-    std::chrono::milliseconds dura(2);
-    std::this_thread::sleep_for(dura);
-  }
+		std::chrono::milliseconds dura(2);
+		std::this_thread::sleep_for(dura);
+	}
 }
 
 void Estimator::processPointToLine(std::vector<ceres::CostFunction *>& edges,
@@ -140,7 +140,7 @@ void Estimator::processPointToLine(std::vector<ceres::CostFunction *>& edges,
   int debug_num22 = 0;
   for (int i = 0; i < laserCloudCornerStackNum; i++) {
     _pointOri = laserCloudCorner->points[i];
-    MAP_MANAGER::pointAssociateToMap(&_pointOri, &_pointSel, m4d);
+    pointAssociateToMap(&_pointOri, &_pointSel, m4d);
     int id = map_manager->FindUsedCornerMap(&_pointSel,laserCenWidth_last,laserCenHeight_last,laserCenDepth_last);
 
     if(id == 5000) continue;
@@ -359,7 +359,7 @@ void Estimator::processPointToPlan(std::vector<ceres::CostFunction *>& edges,
   int debug_num22 = 0;
   for (int i = 0; i < laserCloudSurfStackNum; i++) {
     _pointOri = laserCloudSurf->points[i];
-    MAP_MANAGER::pointAssociateToMap(&_pointOri, &_pointSel, m4d);
+    pointAssociateToMap(&_pointOri, &_pointSel, m4d);
 
     int id = map_manager->FindUsedSurfMap(&_pointSel,laserCenWidth_last,laserCenHeight_last,laserCenDepth_last);
 
@@ -519,7 +519,7 @@ void Estimator::processPointToPlanVec(std::vector<ceres::CostFunction *>& edges,
   int debug_num22 = 0;
   for (int i = 0; i < laserCloudSurfStackNum; i++) {
     _pointOri = laserCloudSurf->points[i];
-    MAP_MANAGER::pointAssociateToMap(&_pointOri, &_pointSel, m4d);
+    pointAssociateToMap(&_pointOri, &_pointSel, m4d);
 
     int id = map_manager->FindUsedSurfMap(&_pointSel,laserCenWidth_last,laserCenHeight_last,laserCenDepth_last);
 
@@ -700,7 +700,7 @@ void Estimator::processNonFeatureICP(std::vector<ceres::CostFunction *>& edges,
   int laserCloudNonFeatureStackNum = laserCloudNonFeature->points.size();
   for (int i = 0; i < laserCloudNonFeatureStackNum; i++) {
     _pointOri = laserCloudNonFeature->points[i];
-    MAP_MANAGER::pointAssociateToMap(&_pointOri, &_pointSel, m4d);
+    pointAssociateToMap(&_pointOri, &_pointSel, m4d);
     int id = map_manager->FindUsedNonFeatureMap(&_pointSel,laserCenWidth_last,laserCenHeight_last,laserCenDepth_last);
 
     if(id == 5000) continue;
@@ -1343,15 +1343,15 @@ void Estimator::MapIncrementLocal(const pcl::PointCloud<PointType>::Ptr& laserCl
   localSurfMap[Id]->clear();
   localNonFeatureMap[Id]->clear();
   for (int i = 0; i < laserCloudCornerStackNum; i++) {
-    MAP_MANAGER::pointAssociateToMap(&laserCloudCornerStack->points[i], &pointSel, transformTobeMapped);
+    pointAssociateToMap(&laserCloudCornerStack->points[i], &pointSel, transformTobeMapped);
     localCornerMap[Id]->push_back(pointSel);
   }
   for (int i = 0; i < laserCloudSurfStackNum; i++) {
-    MAP_MANAGER::pointAssociateToMap(&laserCloudSurfStack->points[i], &pointSel2, transformTobeMapped);
+    pointAssociateToMap(&laserCloudSurfStack->points[i], &pointSel2, transformTobeMapped);
     localSurfMap[Id]->push_back(pointSel2);
   }
   for (int i = 0; i < laserCloudNonFeatureStackNum; i++) {
-    MAP_MANAGER::pointAssociateToMap(&laserCloudNonFeatureStack->points[i], &pointSel2, transformTobeMapped);
+    pointAssociateToMap(&laserCloudNonFeatureStack->points[i], &pointSel2, transformTobeMapped);
     localNonFeatureMap[Id]->push_back(pointSel2);
   }
 

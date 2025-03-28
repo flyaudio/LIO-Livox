@@ -1,5 +1,4 @@
 #include "Estimator/Estimator.h"
-typedef pcl::PointXYZINormal PointType;
 
 int WINDOWSIZE;
 bool LidarIMUInited = false;
@@ -86,16 +85,16 @@ void pubOdometry(const Eigen::Matrix4d& newPose, double& timefullCloud){
 
 }
 
-void fullCallBack(const sensor_msgs::PointCloud2ConstPtr &msg){
-  // push lidar msg to queue
-	std::unique_lock<std::mutex> lock(_mutexLidarQueue);
-  _lidarMsgQueue.push(msg);
+void 
+fullCallBack(const sensor_msgs::PointCloud2ConstPtr &msg){
+    std::unique_lock<std::mutex> lock(_mutexLidarQueue);
+    _lidarMsgQueue.push(msg);
 }
 
-void imu_callback(const sensor_msgs::ImuConstPtr &imu_msg){
-  // push IMU msg to queue
-  std::unique_lock<std::mutex> lock(_mutexIMUQueue);
-  _imuMsgQueue.push(imu_msg);
+void 
+imu_callback(const sensor_msgs::ImuConstPtr &imu_msg){
+    std::unique_lock<std::mutex> lock(_mutexIMUQueue);
+    _imuMsgQueue.push(imu_msg);
 }
 
 /** \brief get IMU messages in a certain time interval
@@ -505,7 +504,7 @@ void process(){
       laserCloudAfterEstimate->reserve(laserCloudFullResNum);
       for (int i = 0; i < laserCloudFullResNum; i++) {
         PointType temp_point;
-        MAP_MANAGER::pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
+        pointAssociateToMap(&lidar_list->front().laserCloud->points[i], &temp_point, transformTobeMapped);
         laserCloudAfterEstimate->push_back(temp_point);
       }
       sensor_msgs::PointCloud2 laserCloudMsg;

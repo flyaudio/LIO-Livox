@@ -1819,7 +1819,7 @@ void LidarFeatureExtractor::FeatureExtract_Mid(pcl::PointCloud<pcl::PointXYZINor
         int line_idx = std::round(msg->points[i].normal_y);//4 lines in mid360
         msg->points[i].normal_z = _int_as_float(i);
 
-        vlines[line_idx]->push_back(msg->points[i]);
+        vlines[line_idx]->push_back(msg->points[i]);//存储为内存连续
 
         msg->points[i].normal_z = 0;//??
     }

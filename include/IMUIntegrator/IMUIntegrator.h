@@ -12,8 +12,7 @@ class IMUIntegrator{
 public:
     IMUIntegrator();
 
-    /** \brief constructor of IMUIntegrator
-     * \param[in] vIMU: IMU messages need to be integrated
+    /** \param[in] vIMU: IMU messages need to be integrated
      */
     IMUIntegrator(std::vector<sensor_msgs::ImuConstPtr> vIMU);
 
@@ -85,11 +84,11 @@ public:
 
     enum JacobianOrder
     {
-        O_P = 0,
-        O_R = 3,
-        O_V = 6,
-        O_BG = 9,
-        O_BA = 12
+        O_P = 0,//位置
+        O_R = 3,//旋转
+        O_V = 6,//速度
+        O_BG = 9,//陀螺仪偏置
+        O_BA = 12//加速度偏置
     };
 private:
     std::vector<sensor_msgs::ImuConstPtr> vimuMsg;

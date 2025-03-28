@@ -5,8 +5,50 @@
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
 #include <future>
+#include "types.h"
+
+
+
+/** \brief transform point pi to the MAP coordinate
+ */
+template <typename PointType>
+void 
+pointAssociateToMap(const PointType& pi,
+					PointType& po,
+					const Eigen::Matrix4d& _transformTobeMapped) {
+	po->getVector3fMap() = _transformTobeMapped.topLeftCorner(3,3) * pi->getVector3fMap() + _transformTobeMapped.topRightCorner(3,1);
+	po->intensity = pi->intensity;
+	po->normal_z = pi->normal_z;
+}
+
+
+template <typename PointType>
+void 
+featureAssociateToMap(const typename pcl::PointCloud<PointType>::ConstPtr& laserCloudCorner,
+					const typename pcl::PointCloud<PointType>::ConstPtr& laserCloudSurf,
+					const typename pcl::PointCloud<PointType>::ConstPtr& laserCloudNonFeature,
+					const typename pcl::PointCloud<PointType>::Ptr& laserCloudCornerToMap,
+					const typename pcl::PointCloud<PointType>::Ptr& laserCloudSurfToMap,
+					const typename pcl::PointCloud<PointType>::Ptr& laserCloudNonFeatureToMap,
+					const Eigen::Matrix4d& transformTobeMapped){
+
+	PointType pointSel1; //,pointSel2,pointSel3;
+	for (const auto& p : laserCloudCorner->points) {
+		pointAssociateToMap(p, pointSel1, transformTobeMapped);
+		laserCloudCornerToMap->push_back(pointSel1);
+	}
+	for (const auto& p : laserCloudSurf->points) {
+		pointAssociateToMap(p, pointSel1, transformTobeMapped);
+		laserCloudSurfToMap->push_back(pointSel1);
+	}
+	for (const auto& p : laserCloudNonFeature->points) {
+		pointAssociateToMap(p, pointSel1, transformTobeMapped);
+		laserCloudNonFeatureToMap->push_back(pointSel1);
+	}
+}
+
+
 class MAP_MANAGER{
-    typedef pcl::PointXYZINormal PointType;
 public:
 
     std::mutex mtx_MapManager;
@@ -31,25 +73,9 @@ public:
       return conv.f;
     }
 
-    /** \brief transform point pi to the MAP coordinate
-     * \param[in] pi: point to be transformed
-     * \param[in] po: point after transfomation
-     * \param[in] _transformTobeMapped: transform matrix between pi and po
-     */
-    static void pointAssociateToMap(PointType const * const pi,
-                                    PointType * const po,
-                                    const Eigen::Matrix4d& _transformTobeMapped);
-
-    void featureAssociateToMap(const pcl::PointCloud<PointType>::Ptr& laserCloudCorner,
-                               const pcl::PointCloud<PointType>::Ptr& laserCloudSurf,
-                               const pcl::PointCloud<PointType>::Ptr& laserCloudNonFeature,
-                               const pcl::PointCloud<PointType>::Ptr& laserCloudCornerToMap,
-                               const pcl::PointCloud<PointType>::Ptr& laserCloudSurfToMap,
-                               const pcl::PointCloud<PointType>::Ptr& laserCloudNonFeatureToMap,
-                               const Eigen::Matrix4d& transformTobeMapped);
     /** \brief add new lidar points to the map
-     * \param[in] laserCloudCornerStack: coner feature points that need to be added to map
-     * \param[in] laserCloudSurfStack: surf feature points that need to be added to map
+     * \param[in] laserCloudCornerStack: coner features that need to be added to map
+     * \param[in] laserCloudSurfStack: surf features that need to be added to map
      * \param[in] transformTobeMapped: transform matrix of the lidar pose
      */
     void MapIncrement(const pcl::PointCloud<PointType>::Ptr& laserCloudCornerStack,

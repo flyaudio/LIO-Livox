@@ -22,7 +22,6 @@
 #include <chrono>
 
 class Estimator{
-	typedef pcl::PointXYZINormal PointType;
 public:
 	/** \brief slide window size */
 	static const int SLIDEWINDOWSIZE = 2;

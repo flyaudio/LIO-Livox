@@ -30,7 +30,6 @@ enum class ANGLE_TYPE : int
 };
 
 class LidarFeatureExtractor{
-    typedef pcl::PointXYZINormal PointType;
 public:
     /** \brief constructor of LidarFeatureExtractor
       * \param[in] n_scans: lines used to extract lidar features
