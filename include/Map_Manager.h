@@ -57,22 +57,6 @@ public:
 
     static size_t ToIndex(int i, int j, int k);
 
-    /** \brief transform float to int
-  */
-    static uint32_t _float_as_int(float f){
-      union{uint32_t i; float f;} conv{};
-      conv.f = f;
-      return conv.i;
-    }
-
-    /** \brief transform int to float
-      */
-    static float _int_as_float(uint32_t i){
-      union{float f; uint32_t i;} conv{};
-      conv.i = i;
-      return conv.f;
-    }
-
     /** \brief add new lidar points to the map
      * \param[in] laserCloudCornerStack: coner features that need to be added to map
      * \param[in] laserCloudSurfStack: surf features that need to be added to map
@@ -97,26 +81,28 @@ public:
 
     size_t FindUsedNonFeatureMap(const PointType *p,int a,int b,int c);
 
-    pcl::KdTreeFLANN<PointType> getCornerKdMap(int i){
-      return CornerKdMap_last[i];
+    pcl::KdTreeFLANN<PointType> getCornerKdMap(int i) {
+        return CornerKdMap_last[i];
     }
-    pcl::KdTreeFLANN<PointType> getSurfKdMap(int i){
-      return SurfKdMap_last[i];
+    pcl::KdTreeFLANN<PointType> getSurfKdMap(int i) {
+        return SurfKdMap_last[i];
     }
-    pcl::KdTreeFLANN<PointType> getNonFeatureKdMap(int i){
-      return NonFeatureKdMap_last[i];
+    pcl::KdTreeFLANN<PointType> getNonFeatureKdMap(int i) {
+        return NonFeatureKdMap_last[i];
     }
-		pcl::PointCloud<PointType>::Ptr get_corner_map(){
-			return laserCloudCornerFromMap;
-		}
-		pcl::PointCloud<PointType>::Ptr get_surf_map(){
-			return laserCloudSurfFromMap;
-		}
-    pcl::PointCloud<PointType>::Ptr get_nonfeature_map(){
-			return laserCloudNonFeatureFromMap;
-		}
-    int get_map_current_pos(){
-      return currentUpdatePos;
+
+    pcl::PointCloud<PointType>::Ptr get_corner_map() {
+        return laserCloudCornerFromMap;
+    }
+    pcl::PointCloud<PointType>::Ptr get_surf_map() {
+        return laserCloudSurfFromMap;
+    }
+    pcl::PointCloud<PointType>::Ptr get_nonfeature_map() {
+        return laserCloudNonFeatureFromMap;
+    }
+
+    int get_map_current_pos() {
+        return currentUpdatePos;
     }
     int get_laserCloudCenWidth_last(){
       return laserCloudCenWidth_last;
@@ -132,7 +118,7 @@ public:
     pcl::PointCloud<PointType> laserCloudNonFeature_for_match[4851];
 
 private:
-    int laserCloudCenWidth = 10;
+    int laserCloudCenWidth = 10;// cube宽、高、深度
     int laserCloudCenHeight = 5;
     int laserCloudCenDepth = 10;
 
@@ -140,13 +126,14 @@ private:
     int laserCloudCenHeight_last = 5;
     int laserCloudCenDepth_last = 10;
 
-    static const int laserCloudWidth = 21;
+    static const int laserCloudWidth = 21;// 子cube沿宽、高、深度分割个数
     static const int laserCloudHeight = 11;
     static const int laserCloudDepth = 21;
-    static const int laserCloudNum = laserCloudWidth * laserCloudHeight * laserCloudDepth;//4851
-    pcl::PointCloud<PointType>::Ptr laserCloudCornerArray[laserCloudNum];
-    pcl::PointCloud<PointType>::Ptr laserCloudSurfArray[laserCloudNum];
+    static const int laserCloudNum = laserCloudWidth * laserCloudHeight * laserCloudDepth;//cube的总数量:4851
+    pcl::PointCloud<PointType>::Ptr laserCloudCornerArray[laserCloudNum];//存放cube 角特征的数组
+    pcl::PointCloud<PointType>::Ptr laserCloudSurfArray[laserCloudNum];  //存放cube 面特征的数组
     pcl::PointCloud<PointType>::Ptr laserCloudNonFeatureArray[laserCloudNum];
+    
     pcl::PointCloud<PointType>::Ptr laserCloudCornerArrayStack[laserCloudNum];
     pcl::PointCloud<PointType>::Ptr laserCloudSurfArrayStack[laserCloudNum];
     pcl::PointCloud<PointType>::Ptr laserCloudNonFeatureArrayStack[laserCloudNum];

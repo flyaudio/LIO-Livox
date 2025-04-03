@@ -1,4 +1,4 @@
-#include "Estimator/Estimator.h"
+#include "Estimator.h"
 
 int WINDOWSIZE;
 bool LidarIMUInited = false;
@@ -19,8 +19,10 @@ Eigen::Matrix4d transformAftMapped = Eigen::Matrix4d::Identity();
 
 std::mutex _mutexLidarQueue;
 std::queue<sensor_msgs::PointCloud2ConstPtr> _lidarMsgQueue;
+
 std::mutex _mutexIMUQueue;
 std::queue<sensor_msgs::ImuConstPtr> _imuMsgQueue;
+
 Eigen::Matrix4d exTlb;
 Eigen::Matrix3d exRlb, exRbl;
 Eigen::Vector3d exPlb, exPbl;
@@ -147,35 +149,11 @@ bool fetchImuMsgs(double startTime, double endTime, std::vector<sensor_msgs::Imu
   return !vimuMsg.empty();
 }
 
-/** \brief Remove Lidar Distortion
-  * \param[in] cloud: lidar cloud need to be undistorted
-  * \param[in] dRlc: delta rotation
-  * \param[in] dtlc: delta displacement
-  */
-void RemoveLidarDistortion(pcl::PointCloud<PointType>::Ptr& cloud,
-                           const Eigen::Matrix3d& dRlc, const Eigen::Vector3d& dtlc){
-  int PointsNum = cloud->points.size();
-  for (int i = 0; i < PointsNum; i++) {
-    Eigen::Vector3d startP;
-    float s = cloud->points[i].normal_x;
-    Eigen::Quaterniond qlc = Eigen::Quaterniond(dRlc).normalized();
-    Eigen::Quaterniond delta_qlc = Eigen::Quaterniond::Identity().slerp(s, qlc).normalized();
-    const Eigen::Vector3d delta_Plc = s * dtlc;
-    startP = delta_qlc * Eigen::Vector3d(cloud->points[i].x,cloud->points[i].y,cloud->points[i].z) + delta_Plc;
-    Eigen::Vector3d _po = dRlc.transpose() * (startP - dtlc);
-
-    cloud->points[i].x = _po(0);
-    cloud->points[i].y = _po(1);
-    cloud->points[i].z = _po(2);
-    cloud->points[i].normal_x = 1.0;
-  }
-}
-
 
 bool TryMAPInitialization() {
 
   Eigen::Vector3d average_acc = -lidarFrameList->begin()->imuIntegrator.GetAverageAcc();
-  double info_g = std::fabs(9.805 - average_acc.norm());
+  // double info_g = std::fabs(9.805 - average_acc.norm());//NOT in use
   average_acc = average_acc * 9.805 / average_acc.norm();
 
   // calculate the initial gravity direction
@@ -372,18 +350,23 @@ void process(){
   while(ros::ok()){
     newfullCloud = false;
     laserCloudFullRes.reset(new pcl::PointCloud<PointType>());
-	  std::unique_lock<std::mutex> lock_lidar(_mutexLidarQueue);
-    if(!_lidarMsgQueue.empty()){
-      // get new lidar msg
-      time_curr_lidar = _lidarMsgQueue.front()->header.stamp.toSec();
-      pcl::fromROSMsg(*_lidarMsgQueue.front(), *laserCloudFullRes);
-      _lidarMsgQueue.pop();
-      newfullCloud = true;
+    {
+      std::unique_lock<std::mutex> lock_lidar(_mutexLidarQueue);
+      if(!_lidarMsgQueue.empty()) {
+        // get new lidar msg
+        time_curr_lidar = _lidarMsgQueue.front()->header.stamp.toSec();
+        pcl::fromROSMsg(*_lidarMsgQueue.front(), *laserCloudFullRes);
+        _lidarMsgQueue.pop();
+        newfullCloud = true;
+      }
+      lock_lidar.unlock();
     }
-    lock_lidar.unlock();
 
+    if(!newfullCloud) {
+      std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
+      continue;
+    }
     if(newfullCloud){
-
       nav_msgs::Odometry debugInfo;
       debugInfo.pose.pose.position.x = 0;
       debugInfo.pose.pose.position.y = 0;
@@ -394,7 +377,7 @@ void process(){
         int countFail = 0;
         while (!fetchImuMsgs(time_last_lidar, time_curr_lidar, vimuMsg)) {
           countFail++;
-          if (countFail > 100){
+          if (countFail > 100) {
             break;
           }
           std::this_thread::sleep_for( std::chrono::milliseconds( 10 ) );
@@ -411,7 +394,8 @@ void process(){
 	    		// if get IMU msg successfully, use gyro integration to update delta_Rl
 			    lidarFrame.imuIntegrator.PushIMUMsg(vimuMsg);
 			    lidarFrame.imuIntegrator.GyroIntegration(time_last_lidar);
-			    delta_Rb = lidarFrame.imuIntegrator.GetDeltaQ().toRotationMatrix();
+			    delta_Rb = lidarFrame.imuIntegrator.GetDeltaQ().toRotationMatrix();//bi_R_bi+1
+          //li_R_li+1 = l_R_b * bi_R_bi+1 * b_R_l
 			    delta_Rl = exTlb.topLeftCorner(3, 3) * delta_Rb * exTlb.topLeftCorner(3, 3).transpose();
 
 			    // predict current lidar pose
@@ -473,7 +457,7 @@ void process(){
 	    }
 
 	    // remove lidar distortion
-	    RemoveLidarDistortion(laserCloudFullRes, delta_Rl, delta_tl);
+	    removeLidarDistortion(laserCloudFullRes, delta_Rl, delta_tl);
 
       // optimize current lidar pose with IMU
       estimator->EstimateLidarPose(*lidar_list, exTlb, GravityVector, debugInfo);

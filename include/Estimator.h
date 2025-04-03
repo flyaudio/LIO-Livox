@@ -138,8 +138,8 @@ public:
 
 	~Estimator();
 
-		/** \brief Open a independent thread to increment MAP cloud
-		*/
+	/** \brief Open a independent thread to increment MAP cloud
+	*/
 	[[noreturn]] void threadMapIncrement();
 
 	/** \brief construct sharp feature Ceres Costfunctions

@@ -37,22 +37,6 @@ public:
     LidarFeatureExtractor(int n_scans,int NumCurvSize,float DistanceFaraway,int NumFlat,int PartNum,float FlatThreshold,
                           float BreakCornerDis,float LidarNearestDis,float KdTreeCornerOutlierDis);
 
-    /** \brief transform float to int
-      */
-    static uint32_t _float_as_int(float f){
-      union{uint32_t i; float f;} conv{};
-      conv.f = f;
-      return conv.i;
-    }
-
-    /** \brief transform int to float
-      */
-    static float _int_as_float(uint32_t i){
-      union{float f; uint32_t i;} conv{};
-      conv.i = i;
-      return conv.f;
-    }
-
     /** \brief Determine whether the point_list is flat
       * \param[in] point_list: points need to be judged
       * \param[in] plane_threshold
