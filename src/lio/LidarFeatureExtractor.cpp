@@ -1160,8 +1160,8 @@ void LidarFeatureExtractor::FeatureExtract_with_segment(const livox_ros_driver::
     }
   }
 
-  pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
-  laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
+  // pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
+  // laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
   laserConerFeature.reset(new pcl::PointCloud<PointType>());
   laserSurfFeature.reset(new pcl::PointCloud<PointType>());
   laserNonFeature.reset(new pcl::PointCloud<PointType>());
@@ -1252,8 +1252,8 @@ void LidarFeatureExtractor::FeatureExtract_with_segment_hap(const livox_ros_driv
     }
   }
 
-  pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
-  laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
+  // pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
+  // laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
   laserConerFeature.reset(new pcl::PointCloud<PointType>());
   laserSurfFeature.reset(new pcl::PointCloud<PointType>());
   laserNonFeature.reset(new pcl::PointCloud<PointType>());
@@ -1782,8 +1782,8 @@ void LidarFeatureExtractor::FeatureExtract_hap(const livox_ros_driver::CustomMsg
 
   detectFeaturePoint2(laserCloud, laserSurfFeature, laserNonFeature);
 
-  pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
-  laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
+  // pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
+  // laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
   laserConerFeature.reset(new pcl::PointCloud<PointType>());
   laserSurfFeature.reset(new pcl::PointCloud<PointType>());
   laserNonFeature.reset(new pcl::PointCloud<PointType>());
@@ -1817,11 +1817,9 @@ void LidarFeatureExtractor::FeatureExtract_Mid(pcl::PointCloud<pcl::PointXYZINor
     int cloud_num= msg->points.size();
     for(int i=0; i<cloud_num; ++i){
         int line_idx = std::round(msg->points[i].normal_y);//4 lines in mid360
-        msg->points[i].normal_z = _int_as_float(i);
-
-        vlines[line_idx]->push_back(msg->points[i]);//存储为内存连续
-
-        msg->points[i].normal_z = 0;//??
+        msg->points[i].normal_z = _int_as_float(i);//normal_z存储原始idx
+        vlines[line_idx]->push_back(msg->points[i]);//分line(包括normal_z存储原始idx)
+        msg->points[i].normal_z = 0;//上一步存储了，这一步还原
     }
     std::thread threads[N_SCANS];
     for(int i=0; i<N_SCANS; ++i){

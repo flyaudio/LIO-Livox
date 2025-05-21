@@ -7,7 +7,7 @@ ros::Publisher pubSharpCloud;
 ros::Publisher pubFlatCloud;
 ros::Publisher pubNonFeature;
 
-LidarFeatureExtractor* lidarFeatureExtractor;
+LidarFeatureExtractor* g_lidarFeatureExtractor;
 pcl::PointCloud<PointType>::Ptr laserCloud;
 pcl::PointCloud<PointType>::Ptr laserConerCloud;
 pcl::PointCloud<PointType>::Ptr laserSurfCloud;
@@ -32,10 +32,10 @@ void lidarCallBackHorizon(const livox_ros_driver::CustomMsgConstPtr &msg) {
   sensor_msgs::PointCloud2 msg2;
 
   if(Use_seg){
-    lidarFeatureExtractor->FeatureExtract_with_segment(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, msg2,N_SCANS);
+    g_lidarFeatureExtractor->FeatureExtract_with_segment(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, msg2,N_SCANS);
   }
   else{
-    lidarFeatureExtractor->FeatureExtract(msg, laserCloud, laserConerCloud, laserSurfCloud,N_SCANS,Lidar_Type);
+    g_lidarFeatureExtractor->FeatureExtract(msg, laserCloud, laserConerCloud, laserSurfCloud,N_SCANS,Lidar_Type);
   } 
 
   sensor_msgs::PointCloud2 laserCloudMsg;
@@ -51,10 +51,10 @@ void lidarCallBackHorizon(const livox_ros_driver::CustomMsgConstPtr &msg) {
 //   sensor_msgs::PointCloud2 msg2;
 
 //   if(Use_seg){
-//     lidarFeatureExtractor->FeatureExtract_with_segment_hap(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, msg2,N_SCANS);
+//     g_lidarFeatureExtractor->FeatureExtract_with_segment_hap(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, msg2,N_SCANS);
 //   }
 //   else{
-//     lidarFeatureExtractor->FeatureExtract_hap(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, N_SCANS);
+//     g_lidarFeatureExtractor->FeatureExtract_hap(msg, laserCloud, laserConerCloud, laserSurfCloud, laserNonFeatureCloud, N_SCANS);
 //   } 
 
 //   sensor_msgs::PointCloud2 laserCloudMsg;
@@ -87,11 +87,11 @@ void lidarCallBackPc2(const sensor_msgs::PointCloud2ConstPtr &msg) {
         p_custom.z=p.z;
         p_custom.intensity=p.intensity;
         p_custom.normal_x=float (i)/float(tmp->points.size());//used in motion undistortion
-        p_custom.normal_y=i%4;//which line// todo: really?
+        p_custom.normal_y=i%4;//which line(0,1,2,3 interleave)
         laser_cloud_custom->points.push_back(p_custom);
     }
 
-    lidarFeatureExtractor->FeatureExtract_Mid(laser_cloud_custom, laserConerCloud, laserSurfCloud);
+    g_lidarFeatureExtractor->FeatureExtract_Mid(laser_cloud_custom, laserConerCloud, laserSurfCloud);
 
     // sensor_msgs::PointCloud2 out;
     // pcl::toROSMsg(*laser_cloud_custom, out);
@@ -152,7 +152,7 @@ int main(int argc, char** argv)
     pubFlatCloud      = nodeHandler.advertise<sensor_msgs::PointCloud2>("/livox_less_flat_cloud", 10);
     pubNonFeature     = nodeHandler.advertise<sensor_msgs::PointCloud2>("/livox_nonfeature_cloud", 10);
 
-  lidarFeatureExtractor = new LidarFeatureExtractor(N_SCANS,NumCurvSize,DistanceFaraway,NumFlat,PartNum,
+  g_lidarFeatureExtractor = new LidarFeatureExtractor(N_SCANS,NumCurvSize,DistanceFaraway,NumFlat,PartNum,
                                                     FlatThreshold,BreakCornerDis,LidarNearestDis,KdTreeCornerOutlierDis);
 
   ros::spin();
