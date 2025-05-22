@@ -552,7 +552,6 @@ LidarFeatureExtractor::LidarFeatureExtractor(int n_scans,int NumCurvSize,float D
 /**
  * extract feature for 1 scan-line
  */
-// void LidarFeatureExtractor::detectFeaturePoint(pcl::PointCloud<PointType>::Ptr& cloud,
 void LidarFeatureExtractor::detectFeaturePoint(pcl::PointCloud<PointType>::Ptr& laserCloudIn,
                                                 std::vector<int>& pointsLessSharp,
                                                 std::vector<int>& pointsLessFlat){
@@ -595,20 +594,19 @@ void LidarFeatureExtractor::detectFeaturePoint(pcl::PointCloud<PointType>::Ptr& 
     auto _laserCloud = removeNan<PointType>(laserCloudIn, CloudFeatureFlag);
     int cloudSize = _laserCloud->size();
 
-//  int debugnum1 = 0;
-  int debugnum2 = 0;
-  int debugnum3 = 0;
-  int debugnum4 = 0;
-  int debugnum5 = 0;
+    int debugnum2 = 0;
+    int debugnum3 = 0;
+    int debugnum4 = 0;
+    int debugnum5 = 0;
 
-  int count_num = 1;
-  bool left_surf_flag = false;
-  bool right_surf_flag = false;
+    int count_num = 1;
+    bool left_surf_flag = false;
+    bool right_surf_flag = false;
 
-  //---------------------------------------- surf feature extract ---------------------------------------------
-  int scanStartInd = 5;
-  int scanEndInd = cloudSize - 6;
-  int thDistanceFaraway_fea = 0;
+    //---------------------------------------- surf feature extract ---------------------------------------------
+    int scanStartInd = 5;
+    int scanEndInd = cloudSize - 6;
+    int thDistanceFaraway_fea = 0;
 
   for (int i = 5; i < cloudSize - 5; i ++ ) {
 //    float dis = sqrt(_laserCloud->points[i].x * _laserCloud->points[i].x +
@@ -689,61 +687,72 @@ void LidarFeatureExtractor::detectFeaturePoint(pcl::PointCloud<PointType>::Ptr& 
     int smallestPickedNum = 1;
     int sharpestPickedNum = 1;
     for (int k = sp; k <= ep; k++) {
-      int ind = cloudSortInd[k];
+        int ind = cloudSortInd[k];
 
-      if (CloudFeatureFlag[ind] != 0) continue;
+        if (CloudFeatureFlag[ind] != FEATURE_TYPE::NONE/*0*/) 
+            continue;
 
-      if (cloudCurvature[ind] < thFlatThreshold * cloudDepth[ind] * thFlatThreshold * cloudDepth[ind]) {
-        
-        CloudFeatureFlag[ind] = 3;
+        if (cloudCurvature[ind] < std::pow(thFlatThreshold * cloudDepth[ind], 2)) {
+            
+            CloudFeatureFlag[ind] = FEATURE_TYPE::BEST_FLAT/*3*/;
 
-        for (int l = 1; l <= thNumCurvSize; l++) {
-          float diffX = _laserCloud->points[ind + l].x -
-                        _laserCloud->points[ind + l - 1].x;
-          float diffY = _laserCloud->points[ind + l].y -
-                        _laserCloud->points[ind + l - 1].y;
-          float diffZ = _laserCloud->points[ind + l].z -
-                        _laserCloud->points[ind + l - 1].z;
-          if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.02 || cloudDepth[ind] > thDistanceFaraway) {
-            break;
-          }
-
-          CloudFeatureFlag[ind + l] = 1;
+            for (int l = 1; l <= thNumCurvSize; l++) {
+            //   float diffX = _laserCloud->points[ind + l    ].x -
+            //                 _laserCloud->points[ind + l - 1].x;
+            //   float diffY = _laserCloud->points[ind + l    ].y -
+            //                 _laserCloud->points[ind + l - 1].y;
+            //   float diffZ = _laserCloud->points[ind + l    ].z -
+            //                 _laserCloud->points[ind + l - 1].z;
+            //   if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.02 || cloudDepth[ind] > thDistanceFaraway) {
+            //     break;
+            //   }
+                if( (_laserCloud->points[ind + l].getVector3fMap() - _laserCloud->points[ind + l - 1].getVector3fMap()).squaredNorm() > 0.02) {
+                    break;
+                }
+                if(cloudDepth[ind] > thDistanceFaraway) {
+                    break;
+                }
+                CloudFeatureFlag[ind + l] = FEATURE_TYPE::FLAT/*1*/;
+            }
+            for (int l = -1; l >= -thNumCurvSize; l--) {
+                // float diffX = _laserCloud->points[ind + l].x -
+                //                 _laserCloud->points[ind + l + 1].x;
+                // float diffY = _laserCloud->points[ind + l].y -
+                //                 _laserCloud->points[ind + l + 1].y;
+                // float diffZ = _laserCloud->points[ind + l].z -
+                //                 _laserCloud->points[ind + l + 1].z;
+                // if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.02 || cloudDepth[ind] > thDistanceFaraway) {
+                //     break;
+                // }
+                if( (_laserCloud->points[ind + l].getVector3fMap() - _laserCloud->points[ind + l + 1].getVector3fMap()).squaredNorm() > 0.02 ) {
+                    break;
+                }
+                if(cloudDepth[ind] > thDistanceFaraway) {
+                    break;
+                }
+                CloudFeatureFlag[ind + l] = FEATURE_TYPE::FLAT/*1*/;
+            }
         }
-        for (int l = -1; l >= -thNumCurvSize; l--) {
-          float diffX = _laserCloud->points[ind + l].x -
-                        _laserCloud->points[ind + l + 1].x;
-          float diffY = _laserCloud->points[ind + l].y -
-                        _laserCloud->points[ind + l + 1].y;
-          float diffZ = _laserCloud->points[ind + l].z -
-                        _laserCloud->points[ind + l + 1].z;
-          if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.02 || cloudDepth[ind] > thDistanceFaraway) {
-            break;
-          }
-
-          CloudFeatureFlag[ind + l] = 1;
-        }
-      }
     }
     
     for (int k = sp; k <= ep; k++) {
-      int ind = cloudSortInd[k];
-      if(((CloudFeatureFlag[ind] == 3) && (smallestPickedNum <= thNumFlat)) || 
-          ((CloudFeatureFlag[ind] == 3) && (cloudDepth[ind] > thDistanceFaraway)) ||
-          cloudAngle[ind] == 1){
-        smallestPickedNum ++;
-        CloudFeatureFlag[ind] = 2;
-        if(cloudDepth[ind] > thDistanceFaraway) {
-          thDistanceFaraway_fea++;
+        int ind = cloudSortInd[k];
+        if(((CloudFeatureFlag[ind] == FEATURE_TYPE::BEST_FLAT/*3*/) && (smallestPickedNum <= thNumFlat)) || 
+            ((CloudFeatureFlag[ind] == FEATURE_TYPE::BEST_FLAT/*3*/) && (cloudDepth[ind] > thDistanceFaraway)) ||
+            cloudAngle[ind] == ANGLE_TYPE::FLAT/*1*/) {
+            smallestPickedNum ++;
+            CloudFeatureFlag[ind] = FEATURE_TYPE::BETTER_FLAT/*2*/;
+            if(cloudDepth[ind] > thDistanceFaraway) {
+                thDistanceFaraway_fea++;
+            }
         }
-      }
 
-      int idx = reflectSortInd[k];
-      if(cloudCurvature[idx] < 0.7 * thFlatThreshold * cloudDepth[idx] * thFlatThreshold * cloudDepth[idx]
-         && sharpestPickedNum <= 3 && cloudReflect[idx] > 20.0){
-        sharpestPickedNum ++;
-        CloudFeatureFlag[idx] = 300;
-      }
+        int idx = reflectSortInd[k];
+        if(cloudCurvature[idx] < 0.7 * thFlatThreshold * cloudDepth[idx] * thFlatThreshold * cloudDepth[idx]
+            && sharpestPickedNum <= 3 && cloudReflect[idx] > 20.0) {
+            sharpestPickedNum ++;
+            CloudFeatureFlag[idx] = FEATURE_TYPE::STRONG_REFLECT_PIONT/*300*/;
+        }
     }
     
   }
@@ -1027,41 +1036,35 @@ void LidarFeatureExtractor::detectFeaturePoint(pcl::PointCloud<PointType>::Ptr& 
 
   }
 
-  pcl::PointCloud<PointType>::Ptr laserCloudCorner(new pcl::PointCloud<PointType>());
-//   pcl::PointCloud<PointType> cornerPointsSharp;
+    auto laserCloudCorner = makeShared<pcl::PointCloud<PointType>>();//NOT in use
+    // std::vector<int> pointsLessSharp_ori;
+    // int num_surf = 0;
+    // int num_corner = 0;
 
-  std::vector<int> pointsLessSharp_ori;
+    for(int i = 5; i < cloudSize - 5; i ++) {
+        // float dis = _laserCloud->points[i].x * _laserCloud->points[i].x
+        //         + _laserCloud->points[i].y * _laserCloud->points[i].y
+        //         + _laserCloud->points[i].z * _laserCloud->points[i].z;
+        float dis = _laserCloud->points[i].getVector3fMap().squaredNorm();
+        if(dis < std::pow(thLidarNearestDis, 2)) 
+            continue;
 
-  int num_surf = 0;
-  int num_corner = 0;
+        if(CloudFeatureFlag[i] == FEATURE_TYPE::BETTER_FLAT/*2*/) {
+            pointsLessFlat.push_back(i);
+            //   num_surf++;
+            continue;
+        }
 
-  //push_back feature
-
-  for(int i = 5; i < cloudSize - 5; i ++){
-
-    float dis = _laserCloud->points[i].x * _laserCloud->points[i].x
-            + _laserCloud->points[i].y * _laserCloud->points[i].y
-            + _laserCloud->points[i].z * _laserCloud->points[i].z;
-
-    if(dis < thLidarNearestDis*thLidarNearestDis) continue;
-
-    if(CloudFeatureFlag[i] == 2){
-      pointsLessFlat.push_back(i);
-      num_surf++;
-      continue;
+        if(CloudFeatureFlag[i] == FEATURE_TYPE::BREAK_POINT/*100*/ || CloudFeatureFlag[i] == FEATURE_TYPE::INTERSACT_PIONT/*150*/) {
+            pointsLessSharp.push_back(i);
+            laserCloudCorner->push_back(_laserCloud->points[i]);
+        }
     }
 
-    if(CloudFeatureFlag[i] == 100 || CloudFeatureFlag[i] == 150){ //
-      pointsLessSharp_ori.push_back(i);
-      laserCloudCorner->push_back(_laserCloud->points[i]);
-    }
-
-  }
-
-  for(int i = 0; i < laserCloudCorner->points.size();i++){
-      pointsLessSharp.push_back(pointsLessSharp_ori[i]);
-      num_corner++;
-  }
+//   for(int i = 0; i < laserCloudCorner->points.size();i++){
+//       pointsLessSharp.push_back(pointsLessSharp_ori[i]);
+    //   num_corner++;
+//   }
 
 }
 
@@ -1072,111 +1075,110 @@ void LidarFeatureExtractor::FeatureExtract_with_segment(const livox_ros_driver::
                                                         pcl::PointCloud<PointType>::Ptr& laserNonFeature,
                                                         sensor_msgs::PointCloud2 &msg_seg,
                                                         const int Used_Line){
-  laserCloud->clear();
-  laserConerFeature->clear();
-  laserSurfFeature->clear();
-  laserCloud->clear();
-  laserCloud->reserve(15000*N_SCANS);
-  for(auto & ptr : vlines){
-    ptr->clear();
-  }
-  for(auto & v : vcorner){
-    v.clear();
-  }
-  for(auto & v : vsurf){
-    v.clear();
-  }
-
-  int dnum = msg->points.size();
-
-  int *idtrans = (int*)calloc(dnum, sizeof(int));
-  float *data=(float*)calloc(dnum*4,sizeof(float));
-  int point_num = 0;
-
-  double timeSpan = ros::Time().fromNSec(msg->points.back().offset_time).toSec();
-  PointType point;
-  for(const auto& p : msg->points){
-
-    int line_num = (int)p.line;
-    if(line_num > Used_Line-1) continue;
-    if(p.x < 0.01) continue;
-    if (!pcl_isfinite(p.x) ||
-        !pcl_isfinite(p.y) ||
-        !pcl_isfinite(p.z)) {
-      continue;
+    laserCloud->clear();
+    laserConerFeature->clear();
+    laserSurfFeature->clear();
+    laserCloud->clear();
+    laserCloud->reserve(15000*N_SCANS);
+    for(auto & ptr : vlines){
+        ptr->clear();
     }
-    point.x = p.x;
-    point.y = p.y;
-    point.z = p.z;
-    point.intensity = p.reflectivity;
-    point.normal_x = ros::Time().fromNSec(p.offset_time).toSec() /timeSpan;
-    point.normal_y = _int_as_float(line_num);
-    laserCloud->push_back(point);
-
-    data[point_num*4+0] = point.x;
-    data[point_num*4+1] = point.y;
-    data[point_num*4+2] = point.z;
-    data[point_num*4+3] = point.intensity;
-
-
-    point_num++;
-  }
-
-  PCSeg pcseg;
-  pcseg.DoSeg(idtrans,data,dnum);
-
-  std::size_t cloud_num = laserCloud->size();
-  for(std::size_t i=0; i<cloud_num; ++i){
-    int line_idx = _float_as_int(laserCloud->points[i].normal_y);
-    laserCloud->points[i].normal_z = _int_as_float(i);
-    vlines[line_idx]->push_back(laserCloud->points[i]);
-  }
-
-  std::thread threads[N_SCANS];
-  for(int i=0; i<N_SCANS; ++i){
-    threads[i] = std::thread(&LidarFeatureExtractor::detectFeaturePoint3, this, std::ref(vlines[i]),std::ref(vcorner[i]));
-  }
-
-  for(int i=0; i<N_SCANS; ++i){
-    threads[i].join();
-  }
-
-  int num_corner = 0;
-  for(int i=0; i<N_SCANS; ++i){
-    for(int j=0; j<vcorner[i].size(); ++j){
-      laserCloud->points[_float_as_int(vlines[i]->points[vcorner[i][j]].normal_z)].normal_z = 1.0; 
-      num_corner++;
+    for(auto & v : vcorner){
+        v.clear();
     }
-  }
-
-  detectFeaturePoint2(laserCloud, laserSurfFeature, laserNonFeature);
-
-  for(std::size_t i=0; i<cloud_num; ++i){
-    float dis = laserCloud->points[i].x * laserCloud->points[i].x
-                + laserCloud->points[i].y * laserCloud->points[i].y
-                + laserCloud->points[i].z * laserCloud->points[i].z;
-    if( idtrans[i] > 9 && dis < 50*50){
-      laserCloud->points[i].normal_z = 0;
+    for(auto & v : vsurf){
+        v.clear();
     }
-  }
 
-  // pcl::PointCloud<PointType>::Ptr laserConerFeature_filter;
-  // laserConerFeature_filter.reset(new pcl::PointCloud<PointType>());
-  laserConerFeature.reset(new pcl::PointCloud<PointType>());
-  laserSurfFeature.reset(new pcl::PointCloud<PointType>());
-  laserNonFeature.reset(new pcl::PointCloud<PointType>());
-  for(const auto& p : laserCloud->points){
-    if(std::fabs(p.normal_z - 1.0) < 1e-5)
-      laserConerFeature->push_back(p);
-  }
+    int dnum = msg->points.size();
 
-  for(const auto& p : laserCloud->points){
-    if(std::fabs(p.normal_z - 2.0) < 1e-5)
-      laserSurfFeature->push_back(p);
-    if(std::fabs(p.normal_z - 3.0) < 1e-5)
-      laserNonFeature->push_back(p);
-  }
+    int *idtrans = (int*)calloc(dnum, sizeof(int));
+    float *data=(float*)calloc(dnum*4,sizeof(float));
+    int point_num = 0;
 
+    double timeSpan = ros::Time().fromNSec(msg->points.back().offset_time).toSec();
+    PointType point;
+    for(const auto& p : msg->points) {
+
+        int line_num = (int)p.line;
+        if(line_num > Used_Line-1) 
+            continue;
+        if(p.x < 0.01) 
+            continue;
+        if (!pcl_isfinite(p.x) ||
+            !pcl_isfinite(p.y) ||
+            !pcl_isfinite(p.z)) {
+            continue;
+        }
+        point.x = p.x;
+        point.y = p.y;
+        point.z = p.z;
+        point.intensity = p.reflectivity;
+        point.normal_x = ros::Time().fromNSec(p.offset_time).toSec() /timeSpan;
+        point.normal_y = _int_as_float(line_num);
+        laserCloud->push_back(point);
+
+        data[point_num*4+0] = point.x;
+        data[point_num*4+1] = point.y;
+        data[point_num*4+2] = point.z;
+        data[point_num*4+3] = point.intensity;
+
+        point_num++;
+    }
+
+    PCSeg pcseg;
+    pcseg.DoSeg(idtrans, data, dnum);
+
+    std::size_t cloud_num = laserCloud->size();
+    for(std::size_t i = 0; i < laserCloud->size(); ++i) {
+        int line_idx = _float_as_int(laserCloud->points[i].normal_y);
+        laserCloud->points[i].normal_z = _int_as_float(i);
+        vlines[line_idx]->push_back(laserCloud->points[i]);
+    }
+
+    std::thread threads[N_SCANS];
+    for(int i = 0; i < N_SCANS; ++i) {
+        threads[i] = std::thread(&LidarFeatureExtractor::detectFeaturePoint3, this, std::ref(vlines[i]),std::ref(vcorner[i]));
+    }
+
+    for(int i = 0; i < N_SCANS; ++i) {
+        threads[i].join();
+    }
+
+    // int num_corner = 0;
+    for(int i = 0; i < N_SCANS; ++i) {
+        for(int j = 0; j < vcorner[i].size(); ++j) {
+        laserCloud->points[_float_as_int(vlines[i]->points[vcorner[i][j]].normal_z)].normal_z = 1.0; 
+        // num_corner++;
+        }
+    }
+
+    detectFeaturePoint2(laserCloud, laserSurfFeature, laserNonFeature);
+
+    for(std::size_t i=0; i<cloud_num; ++i){
+        float dis = laserCloud->points[i].x * laserCloud->points[i].x
+                    + laserCloud->points[i].y * laserCloud->points[i].y
+                    + laserCloud->points[i].z * laserCloud->points[i].z;
+        if( idtrans[i] > 9 && dis < 50*50) {
+            laserCloud->points[i].normal_z = 0;
+        }
+    }
+
+    laserConerFeature.reset(new pcl::PointCloud<PointType>());
+    for(const auto& p : laserCloud->points){
+        if(std::fabs(p.normal_z - 1.0) < 1e-5)
+        laserConerFeature->push_back(p);
+    }
+
+    laserSurfFeature.reset(new pcl::PointCloud<PointType>());
+    for(const auto& p : laserCloud->points){
+        if(std::fabs(p.normal_z - 2.0) < 1e-5)
+        laserSurfFeature->push_back(p);
+        if(std::fabs(p.normal_z - 3.0) < 1e-5)
+        laserNonFeature->push_back(p);
+    }
+
+//   laserNonFeature.reset(new pcl::PointCloud<PointType>());
 }
 
 void LidarFeatureExtractor::FeatureExtract_with_segment_hap(const livox_ros_driver::CustomMsgConstPtr &msg,
@@ -1272,393 +1274,395 @@ void LidarFeatureExtractor::FeatureExtract_with_segment_hap(const livox_ros_driv
 }
 
 
+/**
+ * 不区分line，用kdtree搜索点 & 计算协方差
+ */
 void LidarFeatureExtractor::detectFeaturePoint2(pcl::PointCloud<PointType>::Ptr& cloud,
                                                 pcl::PointCloud<PointType>::Ptr& pointsLessFlat,
-                                                pcl::PointCloud<PointType>::Ptr& pointsNonFeature){
+                                                pcl::PointCloud<PointType>::Ptr& pointsNonFeature) {
+    // int cloudSize = cloud->points.size();
+    pointsLessFlat.reset(new pcl::PointCloud<PointType>());
+    pointsNonFeature.reset(new pcl::PointCloud<PointType>());
 
-  int cloudSize = cloud->points.size();
+    auto KdTreeCloud = makeShared<pcl::KdTreeFLANN<PointType>>();
+    KdTreeCloud->setInputCloud(cloud);
 
-  pointsLessFlat.reset(new pcl::PointCloud<PointType>());
-  pointsNonFeature.reset(new pcl::PointCloud<PointType>());
+    std::vector<int> _pointSearchInd;
+    std::vector<float> _pointSearchSqDis;
 
-  pcl::KdTreeFLANN<PointType>::Ptr KdTreeCloud;
-  KdTreeCloud.reset(new pcl::KdTreeFLANN<PointType>);
-  KdTreeCloud->setInputCloud(cloud);
+    int num_near = 10;
+    int stride = 1;
+    int interval = 4;
 
-  std::vector<int> _pointSearchInd;
-  std::vector<float> _pointSearchSqDis;
+    for(int i = 5; i < cloud->size() - 5; i = i+stride) {
+        if(fabs(cloud->points[i].normal_z - 1.0) < 1e-5) {
+            continue;
+        }
 
-  int num_near = 10;
-  int stride = 1;
-  int interval = 4;
+        double thre1d = 0.5;
+        double thre2d = 0.8;
+        double thre3d = 0.5;
+        double thre3d2 = 0.13;
 
-  for(int i = 5; i < cloudSize - 5; i = i+stride) {
-    if(fabs(cloud->points[i].normal_z - 1.0) < 1e-5) {
-      continue;
-    }
+        // double disti = sqrt(cloud->points[i].x * cloud->points[i].x + 
+        //                     cloud->points[i].y * cloud->points[i].y + 
+        //                     cloud->points[i].z * cloud->points[i].z);
+        double disti = cloud->points[i].getVector3fMap().norm();
 
-    double thre1d = 0.5;
-    double thre2d = 0.8;
-    double thre3d = 0.5;
-    double thre3d2 = 0.13;
+        if(disti < 30.0) {
+            thre1d = 0.5;
+            thre2d = 0.8;
+            thre3d2 = 0.07;
+            stride = 14;
+            interval = 4;
+        } else if(disti < 60.0) {
+            stride = 10;
+            interval = 3;
+        } else {
+            stride = 1;
+            interval = 0;
+        }
 
-    double disti = sqrt(cloud->points[i].x * cloud->points[i].x + 
-                        cloud->points[i].y * cloud->points[i].y + 
-                        cloud->points[i].z * cloud->points[i].z);
+        if(disti > 100.0) {
+            num_near = 6;
 
-    if(disti < 30.0) {
-      thre1d = 0.5;
-      thre2d = 0.8;
-      thre3d2 = 0.07;
-      stride = 14;
-      interval = 4;
-    } else if(disti < 60.0) {
-      stride = 10;
-      interval = 3;
-    } else {
-      stride = 1;
-      interval = 0;
-    }
+            cloud->points[i].normal_z = 3.0;
+            pointsNonFeature->points.push_back(cloud->points[i]);
+            continue;
+        } else if(disti > 60.0) {
+            num_near = 8;
+        } else {
+            num_near = 10;
+        }
 
-    if(disti > 100.0) {
-      num_near = 6;
+        KdTreeCloud->nearestKSearch(cloud->points[i], num_near, _pointSearchInd, _pointSearchSqDis);
 
-      cloud->points[i].normal_z = 3.0;
-      pointsNonFeature->points.push_back(cloud->points[i]);
-      continue;
-    } else if(disti > 60.0) {
-      num_near = 8;
-    } else {
-      num_near = 10;
-    }
+        if (_pointSearchSqDis[num_near-1] > 5.0 && disti < 90.0) {
+            continue;
+        }
 
-    KdTreeCloud->nearestKSearch(cloud->points[i], num_near, _pointSearchInd, _pointSearchSqDis);
+        Eigen::Matrix< double, 3, 3 > _matA1;
+        _matA1.setZero();
 
-    if (_pointSearchSqDis[num_near-1] > 5.0 && disti < 90.0) {
-      continue;
-    }
+        float cx = 0;
+        float cy = 0;
+        float cz = 0;
+        for (int j = 0; j < num_near; j++) {
+            cx += cloud->points[_pointSearchInd[j]].x;
+            cy += cloud->points[_pointSearchInd[j]].y;
+            cz += cloud->points[_pointSearchInd[j]].z;
+        }
+        cx /= num_near;
+        cy /= num_near;
+        cz /= num_near;
 
-    Eigen::Matrix< double, 3, 3 > _matA1;
-    _matA1.setZero();
+        float a11 = 0;
+        float a12 = 0;
+        float a13 = 0;
+        float a22 = 0;
+        float a23 = 0;
+        float a33 = 0;
+        for (int j = 0; j < num_near; j++) {
+            float ax = cloud->points[_pointSearchInd[j]].x - cx;
+            float ay = cloud->points[_pointSearchInd[j]].y - cy;
+            float az = cloud->points[_pointSearchInd[j]].z - cz;
 
-    float cx = 0;
-    float cy = 0;
-    float cz = 0;
-    for (int j = 0; j < num_near; j++) {
-      cx += cloud->points[_pointSearchInd[j]].x;
-      cy += cloud->points[_pointSearchInd[j]].y;
-      cz += cloud->points[_pointSearchInd[j]].z;
-    }
-    cx /= num_near;
-    cy /= num_near;
-    cz /= num_near;
+            a11 += ax * ax;
+            a12 += ax * ay;
+            a13 += ax * az;
+            a22 += ay * ay;
+            a23 += ay * az;
+            a33 += az * az;
+        }
+        a11 /= num_near;
+        a12 /= num_near;
+        a13 /= num_near;
+        a22 /= num_near;
+        a23 /= num_near;
+        a33 /= num_near;
 
-    float a11 = 0;
-    float a12 = 0;
-    float a13 = 0;
-    float a22 = 0;
-    float a23 = 0;
-    float a33 = 0;
-    for (int j = 0; j < num_near; j++) {
-      float ax = cloud->points[_pointSearchInd[j]].x - cx;
-      float ay = cloud->points[_pointSearchInd[j]].y - cy;
-      float az = cloud->points[_pointSearchInd[j]].z - cz;
+        _matA1(0, 0) = a11;
+        _matA1(0, 1) = a12;
+        _matA1(0, 2) = a13;
+        _matA1(1, 0) = a12;
+        _matA1(1, 1) = a22;
+        _matA1(1, 2) = a23;
+        _matA1(2, 0) = a13;
+        _matA1(2, 1) = a23;
+        _matA1(2, 2) = a33;
 
-      a11 += ax * ax;
-      a12 += ax * ay;
-      a13 += ax * az;
-      a22 += ay * ay;
-      a23 += ay * az;
-      a33 += az * az;
-    }
-    a11 /= num_near;
-    a12 /= num_near;
-    a13 /= num_near;
-    a22 /= num_near;
-    a23 /= num_near;
-    a33 /= num_near;
+        Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(_matA1);
+        double a1d = (sqrt(saes.eigenvalues()[2]) - sqrt(saes.eigenvalues()[1])) / sqrt(saes.eigenvalues()[2]);
+        double a2d = (sqrt(saes.eigenvalues()[1]) - sqrt(saes.eigenvalues()[0])) / sqrt(saes.eigenvalues()[2]);
+        double a3d = sqrt(saes.eigenvalues()[0]) / sqrt(saes.eigenvalues()[2]);
 
-    _matA1(0, 0) = a11;
-    _matA1(0, 1) = a12;
-    _matA1(0, 2) = a13;
-    _matA1(1, 0) = a12;
-    _matA1(1, 1) = a22;
-    _matA1(1, 2) = a23;
-    _matA1(2, 0) = a13;
-    _matA1(2, 1) = a23;
-    _matA1(2, 2) = a33;
-
-    Eigen::SelfAdjointEigenSolver<Eigen::Matrix3d> saes(_matA1);
-    double a1d = (sqrt(saes.eigenvalues()[2]) - sqrt(saes.eigenvalues()[1])) / sqrt(saes.eigenvalues()[2]);
-    double a2d = (sqrt(saes.eigenvalues()[1]) - sqrt(saes.eigenvalues()[0])) / sqrt(saes.eigenvalues()[2]);
-    double a3d = sqrt(saes.eigenvalues()[0]) / sqrt(saes.eigenvalues()[2]);
-
-    if(a2d > thre2d || (a3d < thre3d2 && a1d < thre1d)) {
-      for(int k = 1; k < interval; k++) {
-        cloud->points[i-k].normal_z = 2.0;
-        pointsLessFlat->points.push_back(cloud->points[i-k]);
-        cloud->points[i+k].normal_z = 2.0;
-        pointsLessFlat->points.push_back(cloud->points[i+k]);
-      }
-      cloud->points[i].normal_z = 2.0;
-      pointsLessFlat->points.push_back(cloud->points[i]);
-    } else if(a3d > thre3d) {
-      for(int k = 1; k < interval; k++) {
-        cloud->points[i-k].normal_z = 3.0;
-        pointsNonFeature->points.push_back(cloud->points[i-k]);
-        cloud->points[i+k].normal_z = 3.0;
-        pointsNonFeature->points.push_back(cloud->points[i+k]);
-      }
-      cloud->points[i].normal_z = 3.0;
-      pointsNonFeature->points.push_back(cloud->points[i]);
-    }
-  }  
+        if(a2d > thre2d || (a3d < thre3d2 && a1d < thre1d)) {
+            for(int k = 1; k < interval; k++) {
+                cloud->points[i-k].normal_z = 2.0;
+                pointsLessFlat->points.push_back(cloud->points[i-k]);
+                cloud->points[i+k].normal_z = 2.0;
+                pointsLessFlat->points.push_back(cloud->points[i+k]);
+            }
+            cloud->points[i].normal_z = 2.0;
+            pointsLessFlat->points.push_back(cloud->points[i]);
+        } else if(a3d > thre3d) {
+            for(int k = 1; k < interval; k++) {
+                cloud->points[i-k].normal_z = 3.0;
+                pointsNonFeature->points.push_back(cloud->points[i-k]);
+                cloud->points[i+k].normal_z = 3.0;
+                pointsNonFeature->points.push_back(cloud->points[i+k]);
+            }
+            cloud->points[i].normal_z = 3.0;
+            pointsNonFeature->points.push_back(cloud->points[i]);
+        }
+    }  
 }
 
 
-void LidarFeatureExtractor::detectFeaturePoint3(pcl::PointCloud<PointType>::Ptr& cloud,
+void LidarFeatureExtractor::detectFeaturePoint3(pcl::PointCloud<PointType>::Ptr& laserCloudIn,
                                                 std::vector<int>& pointsLessSharp){
-  int CloudFeatureFlag[20000];
-  float cloudCurvature[20000];
-  float cloudDepth[20000];
-  int cloudSortInd[20000];
-  float cloudReflect[20000];
-  int reflectSortInd[20000];
-  int cloudAngle[20000];
+    // int CloudFeatureFlag[20000];
+    // auto& laserCloudIn = cloud;
 
-  pcl::PointCloud<PointType>::Ptr& laserCloudIn = cloud;
+    int cloudSize = laserCloudIn->points.size();
 
-  int cloudSize = laserCloudIn->points.size();
+    PointType point;
+    auto _laserCloud = makeShared<pcl::PointCloud<PointType>>();
+    _laserCloud->reserve(cloudSize);
 
-  PointType point;
-  pcl::PointCloud<PointType>::Ptr _laserCloud(new pcl::PointCloud<PointType>());
-  _laserCloud->reserve(cloudSize);
+    std::vector<int> CloudFeatureFlag(laserCloudIn->size(), 0);
+    for (int i = 0; i < cloudSize; i++) {
+        point.x = laserCloudIn->points[i].x;
+        point.y = laserCloudIn->points[i].y;
+        point.z = laserCloudIn->points[i].z;
+        point.normal_x = 1.0;
+        point.intensity = laserCloudIn->points[i].intensity;
 
-  for (int i = 0; i < cloudSize; i++) {
-    point.x = laserCloudIn->points[i].x;
-    point.y = laserCloudIn->points[i].y;
-    point.z = laserCloudIn->points[i].z;
-    point.normal_x = 1.0;
-    point.intensity = laserCloudIn->points[i].intensity;
-
-    if (!pcl_isfinite(point.x) ||
-        !pcl_isfinite(point.y) ||
-        !pcl_isfinite(point.z)) {
-      continue;
-    }
-
-    _laserCloud->push_back(point);
-    CloudFeatureFlag[i] = 0;
-  }
-
-  cloudSize = _laserCloud->size();
-
-  int count_num = 1;
-  bool left_surf_flag = false;
-  bool right_surf_flag = false;
-
-  //--------------------------------------------------- break points ---------------------------------------------
-  for(int i = 5; i < cloudSize - 5; i ++){
-    float diff_left[2];
-    float diff_right[2];
-    float depth = sqrt(_laserCloud->points[i].x * _laserCloud->points[i].x +
-                       _laserCloud->points[i].y * _laserCloud->points[i].y +
-                       _laserCloud->points[i].z * _laserCloud->points[i].z);
-
-    for(int count = 1; count < 3; count++ ){
-      float diffX1 = _laserCloud->points[i + count].x - _laserCloud->points[i].x;
-      float diffY1 = _laserCloud->points[i + count].y - _laserCloud->points[i].y;
-      float diffZ1 = _laserCloud->points[i + count].z - _laserCloud->points[i].z;
-      diff_right[count - 1] = sqrt(diffX1 * diffX1 + diffY1 * diffY1 + diffZ1 * diffZ1);
-
-      float diffX2 = _laserCloud->points[i - count].x - _laserCloud->points[i].x;
-      float diffY2 = _laserCloud->points[i - count].y - _laserCloud->points[i].y;
-      float diffZ2 = _laserCloud->points[i - count].z - _laserCloud->points[i].z;
-      diff_left[count - 1] = sqrt(diffX2 * diffX2 + diffY2 * diffY2 + diffZ2 * diffZ2);
-    }
-
-    float depth_right = sqrt(_laserCloud->points[i + 1].x * _laserCloud->points[i + 1].x +
-                             _laserCloud->points[i + 1].y * _laserCloud->points[i + 1].y +
-                             _laserCloud->points[i + 1].z * _laserCloud->points[i + 1].z);
-    float depth_left = sqrt(_laserCloud->points[i - 1].x * _laserCloud->points[i - 1].x +
-                            _laserCloud->points[i - 1].y * _laserCloud->points[i - 1].y +
-                            _laserCloud->points[i - 1].z * _laserCloud->points[i - 1].z);
-
-    
-    if(fabs(diff_right[0] - diff_left[0]) > thBreakCornerDis){
-      if(diff_right[0] > diff_left[0]){
-
-        Eigen::Vector3d surf_vector = Eigen::Vector3d(_laserCloud->points[i - 1].x - _laserCloud->points[i].x,
-                                                      _laserCloud->points[i - 1].y - _laserCloud->points[i].y,
-                                                      _laserCloud->points[i - 1].z - _laserCloud->points[i].z);
-        Eigen::Vector3d lidar_vector = Eigen::Vector3d(_laserCloud->points[i].x,
-                                                       _laserCloud->points[i].y,
-                                                       _laserCloud->points[i].z);
-        double left_surf_dis = surf_vector.norm();
-        //calculate the angle between the laser direction and the surface
-        double cc = fabs( surf_vector.dot(lidar_vector) / (surf_vector.norm()*lidar_vector.norm()) );
-
-        std::vector<PointType> left_list;
-        double min_dis = 10000;
-        double max_dis = 0;
-        for(int j = 0; j < 4; j++){   //TODO: change the plane window size and add thin rod support
-          left_list.push_back(_laserCloud->points[i - j]);
-          Eigen::Vector3d temp_vector = Eigen::Vector3d(_laserCloud->points[i - j].x - _laserCloud->points[i - j - 1].x,
-                                                        _laserCloud->points[i - j].y - _laserCloud->points[i - j - 1].y,
-                                                        _laserCloud->points[i - j].z - _laserCloud->points[i - j - 1].z);
-
-          if(j == 3) break;
-          double temp_dis = temp_vector.norm();
-          if(temp_dis < min_dis) min_dis = temp_dis;
-          if(temp_dis > max_dis) max_dis = temp_dis;
-        }
-        // bool left_is_plane = plane_judge(left_list,0.3);
-
-        if(cc < 0.93){//(max_dis < 2*min_dis) && left_surf_dis < 0.05 * depth  && left_is_plane &&
-          if(depth_right > depth_left){
-            CloudFeatureFlag[i] = 100;
-          }
-          else{
-            if(depth_right == 0) CloudFeatureFlag[i] = 100;
-          }
-        }
-      }
-      else{
-
-        Eigen::Vector3d surf_vector = Eigen::Vector3d(_laserCloud->points[i + 1].x - _laserCloud->points[i].x,
-                                                      _laserCloud->points[i + 1].y - _laserCloud->points[i].y,
-                                                      _laserCloud->points[i + 1].z - _laserCloud->points[i].z);
-        Eigen::Vector3d lidar_vector = Eigen::Vector3d(_laserCloud->points[i].x,
-                                                       _laserCloud->points[i].y,
-                                                       _laserCloud->points[i].z);
-        double right_surf_dis = surf_vector.norm();
-        //calculate the angle between the laser direction and the surface
-        double cc = fabs( surf_vector.dot(lidar_vector) / (surf_vector.norm()*lidar_vector.norm()) );
-
-        std::vector<PointType> right_list;
-        double min_dis = 10000;
-        double max_dis = 0;
-        for(int j = 0; j < 4; j++){ //TODO: change the plane window size and add thin rod support
-          right_list.push_back(_laserCloud->points[i - j]);
-          Eigen::Vector3d temp_vector = Eigen::Vector3d(_laserCloud->points[i + j].x - _laserCloud->points[i + j + 1].x,
-                                                        _laserCloud->points[i + j].y - _laserCloud->points[i + j + 1].y,
-                                                        _laserCloud->points[i + j].z - _laserCloud->points[i + j + 1].z);
-
-          if(j == 3) break;
-          double temp_dis = temp_vector.norm();
-          if(temp_dis < min_dis) min_dis = temp_dis;
-          if(temp_dis > max_dis) max_dis = temp_dis;
-        }
-        // bool right_is_plane = plane_judge(right_list,0.3);
-
-        if(cc < 0.93){ //right_is_plane  && (max_dis < 2*min_dis) && right_surf_dis < 0.05 * depth &&
-
-          if(depth_right < depth_left){
-            CloudFeatureFlag[i] = 100;
-          }
-          else{
-            if(depth_left == 0) CloudFeatureFlag[i] = 100;
-          }
-        }
-      }
-    }
-
-    // break points select
-    if(CloudFeatureFlag[i] == 100){
-      std::vector<Eigen::Vector3d> front_norms;
-      Eigen::Vector3d norm_front(0,0,0);
-      Eigen::Vector3d norm_back(0,0,0);
-
-      for(int k = 1;k<4;k++){
-
-        float temp_depth = sqrt(_laserCloud->points[i - k].x * _laserCloud->points[i - k].x +
-                        _laserCloud->points[i - k].y * _laserCloud->points[i - k].y +
-                        _laserCloud->points[i - k].z * _laserCloud->points[i - k].z);
-
-        if(temp_depth < 1){
-          continue;
+        if (!pcl_isfinite(point.x) ||
+            !pcl_isfinite(point.y) ||
+            !pcl_isfinite(point.z)) {
+            continue;
         }
 
-        Eigen::Vector3d tmp = Eigen::Vector3d(_laserCloud->points[i - k].x - _laserCloud->points[i].x,
-                                              _laserCloud->points[i - k].y - _laserCloud->points[i].y,
-                                              _laserCloud->points[i - k].z - _laserCloud->points[i].z);
-        tmp.normalize();
-        front_norms.push_back(tmp);
-        norm_front += (k/6.0)* tmp;
-      }
-      std::vector<Eigen::Vector3d> back_norms;
-      for(int k = 1;k<4;k++){
+        _laserCloud->push_back(point);
+        // CloudFeatureFlag[i] = 0;
+    }
 
-        float temp_depth = sqrt(_laserCloud->points[i - k].x * _laserCloud->points[i - k].x +
-                        _laserCloud->points[i - k].y * _laserCloud->points[i - k].y +
-                        _laserCloud->points[i - k].z * _laserCloud->points[i - k].z);
+    cloudSize = _laserCloud->size();
 
-        if(temp_depth < 1){
-          continue;
+    int count_num = 1;
+    bool left_surf_flag = false;
+    bool right_surf_flag = false;
+
+    //--------------------------------------------------- break points ---------------------------------------------
+    for(int i = 5; i < cloudSize - 5; i ++) {
+        float diff_left[2];
+        float diff_right[2];
+        // float depth = sqrt(_laserCloud->points[i].x * _laserCloud->points[i].x +
+        //                 _laserCloud->points[i].y * _laserCloud->points[i].y +
+        //                 _laserCloud->points[i].z * _laserCloud->points[i].z);
+        float depth = _laserCloud->points[i].getVector3fMap().norm();
+
+        for(int count = 1; count < 3; count++ ) {
+            // float diffX1 = _laserCloud->points[i + count].x - _laserCloud->points[i].x;
+            // float diffY1 = _laserCloud->points[i + count].y - _laserCloud->points[i].y;
+            // float diffZ1 = _laserCloud->points[i + count].z - _laserCloud->points[i].z;
+            // diff_right[count - 1] = sqrt(diffX1 * diffX1 + diffY1 * diffY1 + diffZ1 * diffZ1);
+            diff_right[count - 1] = (_laserCloud->points[i + count].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).norm();
+
+            // float diffX2 = _laserCloud->points[i - count].x - _laserCloud->points[i].x;
+            // float diffY2 = _laserCloud->points[i - count].y - _laserCloud->points[i].y;
+            // float diffZ2 = _laserCloud->points[i - count].z - _laserCloud->points[i].z;
+            // diff_left[count - 1] = sqrt(diffX2 * diffX2 + diffY2 * diffY2 + diffZ2 * diffZ2);
+            diff_left[count - 1] = (_laserCloud->points[i - count].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).norm();
         }
 
-        Eigen::Vector3d tmp = Eigen::Vector3d(_laserCloud->points[i + k].x - _laserCloud->points[i].x,
-                                              _laserCloud->points[i + k].y - _laserCloud->points[i].y,
-                                              _laserCloud->points[i + k].z - _laserCloud->points[i].z);
-        tmp.normalize();
-        back_norms.push_back(tmp);
-        norm_back += (k/6.0)* tmp;
-      }
-      double cc = fabs( norm_front.dot(norm_back) / (norm_front.norm()*norm_back.norm()) );
-      if(cc < 0.93){
-      }else{
-        CloudFeatureFlag[i] = 101;
-      }
+        // float depth_right = sqrt(_laserCloud->points[i + 1].x * _laserCloud->points[i + 1].x +
+        //                          _laserCloud->points[i + 1].y * _laserCloud->points[i + 1].y +
+        //                          _laserCloud->points[i + 1].z * _laserCloud->points[i + 1].z);
+        // float depth_left = sqrt(_laserCloud->points[i - 1].x * _laserCloud->points[i - 1].x +
+        //                         _laserCloud->points[i - 1].y * _laserCloud->points[i - 1].y +
+        //                         _laserCloud->points[i - 1].z * _laserCloud->points[i - 1].z);
+        float depth_right = _laserCloud->points[i + 1].getVector3fMap().norm();
+        float depth_left  = _laserCloud->points[i - 1].getVector3fMap().norm();
+        
+        if(fabs(diff_right[0] - diff_left[0]) > thBreakCornerDis) {
+            if(diff_right[0] > diff_left[0]) {
+
+                // Eigen::Vector3d surf_vector = Eigen::Vector3d(_laserCloud->points[i - 1].x - _laserCloud->points[i].x,
+                //                                             _laserCloud->points[i - 1].y - _laserCloud->points[i].y,
+                //                                             _laserCloud->points[i - 1].z - _laserCloud->points[i].z);
+                Eigen::Vector3d surf_vector = (_laserCloud->points[i - 1].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).cast<double>();
+                // Eigen::Vector3d lidar_vector = Eigen::Vector3d(_laserCloud->points[i].x,
+                //                                             _laserCloud->points[i].y,
+                //                                             _laserCloud->points[i].z);
+                Eigen::Vector3d lidar_vector = _laserCloud->points[i].getVector3fMap().cast<double>();
+                double left_surf_dis = surf_vector.norm();
+                //calculate the angle between the laser direction and the surface
+                double cc = fabs( surf_vector.dot(lidar_vector) / (surf_vector.norm()*lidar_vector.norm()) );
+
+                std::vector<PointType> left_list;
+                double min_dis = 10000;
+                double max_dis = 0;
+                for(int j = 0; j < 4; j++) {   //TODO: change the plane window size and add thin rod support
+                    left_list.push_back(_laserCloud->points[i - j]);
+                    // Eigen::Vector3d temp_vector = Eigen::Vector3d(_laserCloud->points[i - j].x - _laserCloud->points[i - j - 1].x,
+                    //                                                 _laserCloud->points[i - j].y - _laserCloud->points[i - j - 1].y,
+                    //                                                 _laserCloud->points[i - j].z - _laserCloud->points[i - j - 1].z);
+                    Eigen::Vector3d temp_vector = (_laserCloud->points[i - j].getVector3fMap() - _laserCloud->points[i - j - 1].getVector3fMap()).cast<double>();
+                    if(j == 3) break;
+                    double temp_dis = temp_vector.norm();
+                    if(temp_dis < min_dis) 
+                        min_dis = temp_dis;
+                    if(temp_dis > max_dis) 
+                        max_dis = temp_dis;
+                }
+                // bool left_is_plane = plane_judge(left_list,0.3);
+
+                if(cc < 0.93) {//(max_dis < 2*min_dis) && left_surf_dis < 0.05 * depth  && left_is_plane &&
+                    if(depth_right > depth_left) {
+                        CloudFeatureFlag[i] = FEATURE_TYPE::BREAK_POINT;/*100*/
+                    }
+                    else {
+                        if(depth_right == 0) CloudFeatureFlag[i] = FEATURE_TYPE::BREAK_POINT;/*100*/
+                    }
+                }
+            }
+            else{
+
+                // Eigen::Vector3d surf_vector = Eigen::Vector3d(_laserCloud->points[i + 1].x - _laserCloud->points[i].x,
+                //                                             _laserCloud->points[i + 1].y - _laserCloud->points[i].y,
+                //                                             _laserCloud->points[i + 1].z - _laserCloud->points[i].z);
+                Eigen::Vector3d surf_vector = (_laserCloud->points[i + 1].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).cast<double>();
+                // Eigen::Vector3d lidar_vector = Eigen::Vector3d(_laserCloud->points[i].x,
+                //                                             _laserCloud->points[i].y,
+                //                                             _laserCloud->points[i].z);
+                Eigen::Vector3d lidar_vector = _laserCloud->points[i].getVector3fMap().cast<double>();
+                double right_surf_dis = surf_vector.norm();
+                //calculate the angle between the laser direction and the surface
+                double cc = fabs( surf_vector.dot(lidar_vector) / (surf_vector.norm() * lidar_vector.norm()) );
+
+                std::vector<PointType> right_list;
+                double min_dis = 10000;
+                double max_dis = 0;
+                for(int j = 0; j < 4; j++) { //TODO: change the plane window size and add thin rod support
+                    right_list.push_back(_laserCloud->points[i - j]);
+                    Eigen::Vector3d temp_vector = Eigen::Vector3d(_laserCloud->points[i + j].x - _laserCloud->points[i + j + 1].x,
+                                                                    _laserCloud->points[i + j].y - _laserCloud->points[i + j + 1].y,
+                                                                    _laserCloud->points[i + j].z - _laserCloud->points[i + j + 1].z);
+
+                    if(j == 3) break;
+                    double temp_dis = temp_vector.norm();
+                    if(temp_dis < min_dis) 
+                        min_dis = temp_dis;
+                    if(temp_dis > max_dis) 
+                        max_dis = temp_dis;
+                }
+                // bool right_is_plane = plane_judge(right_list,0.3);
+
+                if(cc < 0.93){ //right_is_plane  && (max_dis < 2*min_dis) && right_surf_dis < 0.05 * depth &&
+                    if(depth_right < depth_left){
+                        CloudFeatureFlag[i] = FEATURE_TYPE::BREAK_POINT;/*100*/
+                    }
+                    else{
+                        if(depth_left == 0) CloudFeatureFlag[i] = FEATURE_TYPE::BREAK_POINT;/*100*/
+                    }
+                }
+            }
+        }
+
+        // break points select
+        if(CloudFeatureFlag[i] == FEATURE_TYPE::BREAK_POINT/*100*/) {
+            std::vector<Eigen::Vector3d> front_norms;
+            Eigen::Vector3d norm_front(0,0,0);
+            Eigen::Vector3d norm_back(0,0,0);
+
+            for(int k = 1; k < 4; k++) {
+
+                // float temp_depth = sqrt(_laserCloud->points[i - k].x * _laserCloud->points[i - k].x +
+                //                 _laserCloud->points[i - k].y * _laserCloud->points[i - k].y +
+                //                 _laserCloud->points[i - k].z * _laserCloud->points[i - k].z);
+                float temp_depth = _laserCloud->points[i - k].getVector3fMap().norm();
+                if(temp_depth < 1) {
+                    continue;
+                }
+
+                // Eigen::Vector3d tmp = Eigen::Vector3d(_laserCloud->points[i - k].x - _laserCloud->points[i].x,
+                //                                     _laserCloud->points[i - k].y - _laserCloud->points[i].y,
+                //                                     _laserCloud->points[i - k].z - _laserCloud->points[i].z);
+                Eigen::Vector3d tmp = (_laserCloud->points[i - k].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).cast<double>();
+                tmp.normalize();
+                front_norms.push_back(tmp);
+                norm_front += (k/6.0)* tmp;
+            }
+            std::vector<Eigen::Vector3d> back_norms;
+            for(int k = 1; k < 4 ; k++) {
+
+                // float temp_depth = sqrt(_laserCloud->points[i - k].x * _laserCloud->points[i - k].x +
+                //                 _laserCloud->points[i - k].y * _laserCloud->points[i - k].y +
+                //                 _laserCloud->points[i - k].z * _laserCloud->points[i - k].z);
+                float temp_depth = _laserCloud->points[i - k].getVector3fMap().norm();
+                if(temp_depth < 1) {
+                    continue;
+                }
+
+                // Eigen::Vector3d tmp = Eigen::Vector3d(_laserCloud->points[i + k].x - _laserCloud->points[i].x,
+                //                                     _laserCloud->points[i + k].y - _laserCloud->points[i].y,
+                //                                     _laserCloud->points[i + k].z - _laserCloud->points[i].z);
+                Eigen::Vector3d tmp = (_laserCloud->points[i + k].getVector3fMap() - _laserCloud->points[i].getVector3fMap()).cast<double>();
+                tmp.normalize();
+                back_norms.push_back(tmp);
+                norm_back += (k/6.0)* tmp;
+            }
+            double cc = fabs( norm_front.dot(norm_back) / (norm_front.norm() * norm_back.norm()) );
+            if(cc < 0.93) {
+            }else {
+                CloudFeatureFlag[i] = 101;
+            }
+
+        }
 
     }
 
-  }
+    auto laserCloudCorner = makeShared<pcl::PointCloud<PointType>>();//NOT in use
+    // std::vector<int> pointsLessSharp_ori;//NOT in use
 
-  pcl::PointCloud<PointType>::Ptr laserCloudCorner(new pcl::PointCloud<PointType>());
-//   pcl::PointCloud<PointType> cornerPointsSharp;
+    // int num_surf = 0;
+    // int num_corner = 0;
 
-  std::vector<int> pointsLessSharp_ori;
+    for(int i = 5; i < cloudSize - 5; i ++) {
+        // Eigen::Vector3d left_pt = Eigen::Vector3d(_laserCloud->points[i - 1].x,
+        //                                         _laserCloud->points[i - 1].y,
+        //                                         _laserCloud->points[i - 1].z);
+        Eigen::Vector3f left_pt = _laserCloud->points[i - 1].getVector3fMap().normalized();
+        // Eigen::Vector3d right_pt = Eigen::Vector3d(_laserCloud->points[i + 1].x,
+        //                                         _laserCloud->points[i + 1].y,
+        //                                         _laserCloud->points[i + 1].z);
+        Eigen::Vector3f right_pt = _laserCloud->points[i + 1].getVector3fMap().normalized();
+        // Eigen::Vector3d cur_pt = Eigen::Vector3d(_laserCloud->points[i].x,
+        //                                         _laserCloud->points[i].y,
+        //                                         _laserCloud->points[i].z);
+        Eigen::Vector3f cur_pt = _laserCloud->points[i].getVector3fMap().normalized();
+        // float dis = _laserCloud->points[i].x * _laserCloud->points[i].x +
+        //             _laserCloud->points[i].y * _laserCloud->points[i].y +
+        //             _laserCloud->points[i].z * _laserCloud->points[i].z;
+        float dis =  _laserCloud->points[i].getVector3fMap().squaredNorm()
+        float clr = fabs(left_pt.dot(right_pt) / (left_pt.norm()*right_pt.norm()));
+        float cl = fabs(left_pt.dot(cur_pt) / (left_pt.norm()*cur_pt.norm()));
+        float cr = fabs(right_pt.dot(cur_pt) / (right_pt.norm()*cur_pt.norm()));
 
-  int num_surf = 0;
-  int num_corner = 0;
+        if(clr < 0.999f) {
+            CloudFeatureFlag[i] = 200;
+        }
 
-  for(int i = 5; i < cloudSize - 5; i ++){
-    Eigen::Vector3d left_pt = Eigen::Vector3d(_laserCloud->points[i - 1].x,
-                                              _laserCloud->points[i - 1].y,
-                                              _laserCloud->points[i - 1].z);
-    Eigen::Vector3d right_pt = Eigen::Vector3d(_laserCloud->points[i + 1].x,
-                                               _laserCloud->points[i + 1].y,
-                                               _laserCloud->points[i + 1].z);
+        if(dis < std::pow(thLidarNearestDis, 2))
+            continue;
 
-    Eigen::Vector3d cur_pt = Eigen::Vector3d(_laserCloud->points[i].x,
-                                             _laserCloud->points[i].y,
-                                             _laserCloud->points[i].z);
-
-    float dis = _laserCloud->points[i].x * _laserCloud->points[i].x +
-                _laserCloud->points[i].y * _laserCloud->points[i].y +
-                _laserCloud->points[i].z * _laserCloud->points[i].z;
-
-    double clr = fabs(left_pt.dot(right_pt) / (left_pt.norm()*right_pt.norm()));
-    double cl = fabs(left_pt.dot(cur_pt) / (left_pt.norm()*cur_pt.norm()));
-    double cr = fabs(right_pt.dot(cur_pt) / (right_pt.norm()*cur_pt.norm()));
-
-    if(clr < 0.999){
-      CloudFeatureFlag[i] = 200;
+        if(CloudFeatureFlag[i] == FEATURE_TYPE::BREAK_POINT/*100*/ || CloudFeatureFlag[i] == 200) { //
+            pointsLessSharp.push_back(i);
+            laserCloudCorner->push_back(_laserCloud->points[i]);
+        }
     }
-
-    if(dis < thLidarNearestDis*thLidarNearestDis) continue;
-
-    if(CloudFeatureFlag[i] == 100 || CloudFeatureFlag[i] == 200){ //
-      pointsLessSharp_ori.push_back(i);
-      laserCloudCorner->push_back(_laserCloud->points[i]);
-    }
-  }
-
-  for(int i = 0; i < laserCloudCorner->points.size();i++){
-      pointsLessSharp.push_back(pointsLessSharp_ori[i]);
-      num_corner++;
-  }
-
 }
 
 

@@ -37,11 +37,11 @@ int PCSeg::DoSeg(int *pLabel1, float* fPoints1, int pointNum)
     }
     memset(pVImg,0,sizeof(unsigned char)*DN_SAMPLE_IMG_NX*DN_SAMPLE_IMG_NY*DN_SAMPLE_IMG_NZ);//600*200*30  
     
-    for(int pid=0;pid<pointNum;pid++)
+    for(int pid = 0; pid < pointNum; pid++)
     {
-        int ix=(fPoints1[pid*4]+DN_SAMPLE_IMG_OFFX)/DN_SAMPLE_IMG_DX; //0-240m -> -40-190m
-        int iy=(fPoints1[pid*4+1]+DN_SAMPLE_IMG_OFFY)/DN_SAMPLE_IMG_DY; //-40-40m
-        int iz=(fPoints1[pid*4+2]+DN_SAMPLE_IMG_OFFZ)/DN_SAMPLE_IMG_DZ;//认为地面为-1.8？ -2.5~17.5
+        int ix = (fPoints1[pid*4  ]+DN_SAMPLE_IMG_OFFX) / DN_SAMPLE_IMG_DX; //0-240m -> -40-190m
+        int iy = (fPoints1[pid*4+1]+DN_SAMPLE_IMG_OFFY) / DN_SAMPLE_IMG_DY; //-40-40m
+        int iz = (fPoints1[pid*4+2]+DN_SAMPLE_IMG_OFFZ) / DN_SAMPLE_IMG_DZ;//认为地面为-1.8？ -2.5~17.5
 
         idtrans1[pid]=-1;
         if((ix>=0)&&(ix<DN_SAMPLE_IMG_NX)&&(iy>=0)&&(iy<DN_SAMPLE_IMG_NY)&&(iz>=0)&&(iz<DN_SAMPLE_IMG_NZ)) //DN_SAMPLE_IMG_OFFX = 0 因此只保留前半块
