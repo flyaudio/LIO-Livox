@@ -144,7 +144,7 @@ public:
 
 	/** \brief construct sharp feature Ceres Costfunctions
 	* \param[in] edges: store costfunctions
-	* \param[in] m4d: lidar pose, represented by matrix 4X4
+	* \param[in] m4d: lidar pose
 	*/
 	void processPointToLine(std::vector<ceres::CostFunction *>& edges,
 							std::vector<FeatureLine>& vLineFeatures,
@@ -215,9 +215,10 @@ public:
 	pcl::PointCloud<PointType>::Ptr get_nonfeature_map(){
 		return map_manager->get_nonfeature_map();
 	}
-	void MapIncrementLocal(const pcl::PointCloud<PointType>::Ptr& laserCloudCornerStack,
-						   const pcl::PointCloud<PointType>::Ptr& laserCloudSurfStack,
-						   const pcl::PointCloud<PointType>::Ptr& laserCloudNonFeatureStack,
+
+	void MapIncrementLocal(const pcl::PointCloud<PointType>::Ptr& cornerStack,
+						   const pcl::PointCloud<PointType>::Ptr& surfStack,
+						   const pcl::PointCloud<PointType>::Ptr& nonFeatureStack,
 						   const Eigen::Matrix4d& transformTobeMapped);
 
 private:
@@ -232,9 +233,10 @@ private:
 	std::vector<pcl::PointCloud<PointType>::Ptr> laserCloudSurfLast;
 	std::vector<pcl::PointCloud<PointType>::Ptr> laserCloudNonFeatureLast;
 
-	pcl::PointCloud<PointType>::Ptr laserCloudCornerFromLocal;
+	pcl::PointCloud<PointType>::Ptr laserCloudCornerFromLocal;//local map
 	pcl::PointCloud<PointType>::Ptr laserCloudSurfFromLocal;
 	pcl::PointCloud<PointType>::Ptr laserCloudNonFeatureFromLocal;
+
 	pcl::PointCloud<PointType>::Ptr laserCloudCornerForMap;
 	pcl::PointCloud<PointType>::Ptr laserCloudSurfForMap;
 	pcl::PointCloud<PointType>::Ptr laserCloudNonFeatureForMap;
@@ -249,7 +251,7 @@ private:
 	pcl::VoxelGrid<PointType> downSizeFilterSurf;
 	pcl::VoxelGrid<PointType> downSizeFilterNonFeature;
 	std::mutex mtx_Map;
-	std::thread threadMap;
+	std::thread threadMap_;
 
 	pcl::KdTreeFLANN<PointType> CornerKdMap[10000];
 	pcl::KdTreeFLANN<PointType> SurfKdMap[10000];

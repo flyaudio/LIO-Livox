@@ -1,5 +1,4 @@
-#ifndef LIO_LIVOX_LIDARFEATUREEXTRACTOR_H
-#define LIO_LIVOX_LIDARFEATUREEXTRACTOR_H
+#pragma once
 #include <ros/ros.h>
 #include <livox_ros_driver/CustomMsg.h>
 #include <sensor_msgs/PointCloud2.h>
@@ -124,4 +123,3 @@ private:
     float thLidarNearestDis;  
 };
 
-#endif //LIO_LIVOX_LIDARFEATUREEXTRACTOR_H
