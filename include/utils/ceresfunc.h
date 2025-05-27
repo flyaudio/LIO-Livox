@@ -1,5 +1,4 @@
-#ifndef LIO_LIVOX_CERESFUNC_H
-#define LIO_LIVOX_CERESFUNC_H
+#pragma once
 #include <ceres/ceres.h>
 #include <glog/logging.h>
 #include <utility>
@@ -413,8 +412,8 @@ struct Cost_NavState_IMU_Line
     template <typename T>
     bool operator()(const T *PRi, T *residual) const {
       Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
-      Eigen::Matrix<T, 3, 1> lpa{T(vtx1.x()), T(vtx1.y()), T(vtx1.z())};
-      Eigen::Matrix<T, 3, 1> lpb{T(vtx2.x()), T(vtx2.y()), T(vtx2.z())};
+      Eigen::Matrix<T, 3, 1> lpa{T(vtx1.x()), T(vtx1.y()), T(vtx1.z())};//line point a
+      Eigen::Matrix<T, 3, 1> lpb{T(vtx2.x()), T(vtx2.y()), T(vtx2.z())};//line point b
 
       Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
       Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
@@ -424,12 +423,13 @@ struct Cost_NavState_IMU_Line
       Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
 
       T a012 = ceres::sqrt(
-              ((P_to_Map(0) - lpa(0)) * (P_to_Map(1) - lpb(1)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(1) - lpa(1)))
-              * ((P_to_Map(0) - lpa(0)) * (P_to_Map(1) - lpb(1)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(1) - lpa(1)))
-              + ((P_to_Map(0) - lpa(0)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(2) - lpa(2)))
-                * ((P_to_Map(0) - lpa(0)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(2) - lpa(2)))
-              + ((P_to_Map(1) - lpa(1)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(1) - lpb(1)) * (P_to_Map(2) - lpa(2)))
-                * ((P_to_Map(1) - lpa(1)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(1) - lpb(1)) * (P_to_Map(2) - lpa(2))));
+			((P_to_Map(0) - lpa(0)) * (P_to_Map(1) - lpb(1)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(1) - lpa(1)))
+        *	((P_to_Map(0) - lpa(0)) * (P_to_Map(1) - lpb(1)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(1) - lpa(1)))
+        +	((P_to_Map(0) - lpa(0)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(2) - lpa(2)))
+        *	((P_to_Map(0) - lpa(0)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(0) - lpb(0)) * (P_to_Map(2) - lpa(2)))
+        +	((P_to_Map(1) - lpa(1)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(1) - lpb(1)) * (P_to_Map(2) - lpa(2)))
+        *	((P_to_Map(1) - lpa(1)) * (P_to_Map(2) - lpb(2)) - (P_to_Map(1) - lpb(1)) * (P_to_Map(2) - lpa(2)))
+		);
       T ld2 = a012 / T(l12);
       T _weight = T(1) - T(0.9) * ceres::abs(ld2) / ceres::sqrt(
               ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
@@ -463,35 +463,35 @@ struct Cost_NavState_IMU_Line
 struct Cost_NavState_IMU_Plan
 {
     Cost_NavState_IMU_Plan(Eigen::Vector3d  _p, double _pa, double _pb, double _pc, double _pd,
-
                            const Eigen::Matrix4d& Tbl, Eigen::Matrix<double, 1, 1>  sqrt_information_):
-            point(std::move(_p)), pa(_pa), pb(_pb), pc(_pc), pd(_pd), sqrt_information(std::move(sqrt_information_)){
-      Eigen::Matrix3d m3d = Tbl.topLeftCorner(3,3);
-      qbl = Eigen::Quaterniond(m3d).normalized();
-      qlb = qbl.conjugate();
-      Pbl = Tbl.topRightCorner(3,1);
-      Plb = -(qlb * Pbl);
+            point(std::move(_p)), pa(_pa), pb(_pb), pc(_pc), pd(_pd), sqrt_information(std::move(sqrt_information_)) {
+		Eigen::Matrix3d m3d = Tbl.topLeftCorner(3,3);
+		qbl = Eigen::Quaterniond(m3d).normalized();
+		qlb = qbl.conjugate();
+		Pbl = Tbl.topRightCorner(3,1);
+		Plb = -(qlb * Pbl);
     }
 
     template <typename T>
     bool operator()(const T *PRi, T *residual) const {
-      Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
+		Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
 
-      Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
-      Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
-      Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
-      Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
-      Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
-      Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
+		Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
+		Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
+		Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
+		Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
+		Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
+		Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
 
-      T pd2 = T(pa) * P_to_Map(0) + T(pb) * P_to_Map(1) + T(pc) * P_to_Map(2) + T(pd);
-      T _weight = T(1) - T(0.9) * ceres::abs(pd2) /ceres::sqrt(
-              ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
-                           P_to_Map(1) * P_to_Map(1) +
-                           P_to_Map(2) * P_to_Map(2) ));
-      residual[0] = T(sqrt_information(0)) * _weight * pd2;
+		T pd2 = T(pa) * P_to_Map(0) + T(pb) * P_to_Map(1) + T(pc) * P_to_Map(2) + T(pd);
+		T _weight = T(1) - T(0.9) * ceres::abs(pd2) /ceres::sqrt(
+				ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
+							P_to_Map(1) * P_to_Map(1) +
+							P_to_Map(2) * P_to_Map(2) )
+				);
+		residual[0] = T(sqrt_information(0)) * _weight * pd2;
 
-      return true;
+		return true;
     }
 
     static ceres::CostFunction *Create(const Eigen::Vector3d& curr_point_,
@@ -501,8 +501,8 @@ struct Cost_NavState_IMU_Plan
                                        const double& pd_,
                                        const Eigen::Matrix4d& Tbl,
                                        Eigen::Matrix<double, 1, 1>  sqrt_information_) {
-      return (new ceres::AutoDiffCostFunction<Cost_NavState_IMU_Plan, 1, 6>(
-              new Cost_NavState_IMU_Plan(curr_point_, pa_, pb_, pc_, pd_, Tbl, std::move(sqrt_information_))));
+		return (new ceres::AutoDiffCostFunction<Cost_NavState_IMU_Plan, 1, 6>(
+				new Cost_NavState_IMU_Plan(curr_point_, pa_, pb_, pc_, pd_, Tbl, std::move(sqrt_information_))));
     }
 
     double pa, pb, pc, pd;
@@ -533,26 +533,27 @@ struct Cost_NavState_IMU_Plan_Vec
 
     template <typename T>
     bool operator()(const T *PRi, T *residual) const {
-      Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
-	  Eigen::Matrix<T, 3, 1> cp_proj{T(point_proj.x()), T(point_proj.y()), T(point_proj.z())};
+		Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
+		Eigen::Matrix<T, 3, 1> cp_proj{T(point_proj.x()), T(point_proj.y()), T(point_proj.z())};
 
-      Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
-      Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
-      Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
-      Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
-      Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
-      Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
+		Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
+		Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
+		Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
+		Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
+		Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
+		Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
 
-	  Eigen::Map<Eigen::Matrix<T, 3, 1> > eResiduals(residual);
-      eResiduals = P_to_Map - cp_proj;
-	  T _weight = T(1) - T(0.9) * (P_to_Map - cp_proj).norm() /ceres::sqrt(
-              ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
-                           P_to_Map(1) * P_to_Map(1) +
-                           P_to_Map(2) * P_to_Map(2) ));
-	  eResiduals *= _weight;
-	  eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
+		Eigen::Map<Eigen::Matrix<T, 3, 1> > eResiduals(residual);
+		eResiduals = P_to_Map - cp_proj;
+		T _weight = T(1) - T(0.9) * (P_to_Map - cp_proj).norm() /ceres::sqrt(
+				ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
+							P_to_Map(1) * P_to_Map(1) +
+							P_to_Map(2) * P_to_Map(2) )
+			);
+		eResiduals *= _weight;
+		eResiduals.applyOnTheLeft(sqrt_information.template cast<T>());
 
-      return true;
+		return true;
     }
 
     static ceres::CostFunction *Create(const Eigen::Vector3d& curr_point_,
@@ -576,32 +577,32 @@ struct Cost_NonFeature_ICP
     Cost_NonFeature_ICP(Eigen::Vector3d  _p, double _pa, double _pb, double _pc, double _pd,
                         const Eigen::Matrix4d& Tbl, Eigen::Matrix<double, 1, 1>  sqrt_information_):
             			point(std::move(_p)), pa(_pa), pb(_pb), pc(_pc), pd(_pd), sqrt_information(std::move(sqrt_information_)){
-      Eigen::Matrix3d m3d = Tbl.topLeftCorner(3,3);
-      qbl = Eigen::Quaterniond(m3d).normalized();
-      qlb = qbl.conjugate();
-      Pbl = Tbl.topRightCorner(3,1);
-      Plb = -(qlb * Pbl);
+		Eigen::Matrix3d m3d = Tbl.topLeftCorner(3,3);
+		qbl = Eigen::Quaterniond(m3d).normalized();
+		qlb = qbl.conjugate();
+		Pbl = Tbl.topRightCorner(3,1);
+		Plb = -(qlb * Pbl);
     }
 
     template <typename T>
     bool operator()(const T *PRi, T *residual) const {
-      Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
+		Eigen::Matrix<T, 3, 1> cp{T(point.x()), T(point.y()), T(point.z())};
 
-      Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
-      Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
-      Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
-      Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
-      Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
-      Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
+		Eigen::Map<const Eigen::Matrix<T, 6, 1>> pri_wb(PRi);
+		Eigen::Quaternion<T> q_wb = Sophus::SO3<T>::exp(pri_wb.template segment<3>(3)).unit_quaternion();
+		Eigen::Matrix<T, 3, 1> t_wb = pri_wb.template segment<3>(0);
+		Eigen::Quaternion<T> q_wl = q_wb * qbl.cast<T>();
+		Eigen::Matrix<T, 3, 1> t_wl = q_wb * Pbl.cast<T>() + t_wb;
+		Eigen::Matrix<T, 3, 1> P_to_Map = q_wl * cp + t_wl;
 
-      T pd2 = T(pa) * P_to_Map(0) + T(pb) * P_to_Map(1) + T(pc) * P_to_Map(2) + T(pd);
-      T _weight = T(1) - T(0.9) * ceres::abs(pd2) /ceres::sqrt(
-              ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
-                           P_to_Map(1) * P_to_Map(1) +
-                           P_to_Map(2) * P_to_Map(2) ));
-      residual[0] = T(sqrt_information(0)) * _weight * pd2;
+		T pd2 = T(pa) * P_to_Map(0) + T(pb) * P_to_Map(1) + T(pc) * P_to_Map(2) + T(pd);
+		T _weight = T(1) - T(0.9) * ceres::abs(pd2) /ceres::sqrt(
+				ceres::sqrt( P_to_Map(0) * P_to_Map(0) +
+							P_to_Map(1) * P_to_Map(1) +
+							P_to_Map(2) * P_to_Map(2) ));
+		residual[0] = T(sqrt_information(0)) * _weight * pd2;
 
-      return true;
+		return true;
     }
 
     static ceres::CostFunction *Create(const Eigen::Vector3d& curr_point_,
@@ -638,7 +639,6 @@ struct Cost_Initial_G
 		residual[0] = resi[0];
 		residual[1] = resi[1];
 		residual[2] = resi[2];
-
 		return true;
 	}
 
@@ -817,5 +817,3 @@ struct Cost_Initialization_Prior_R
 	Eigen::Vector3d prior;
 	Eigen::Matrix3d sqrt_information;
 };
-
-#endif //LIO_LIVOX_CERESFUNC_H

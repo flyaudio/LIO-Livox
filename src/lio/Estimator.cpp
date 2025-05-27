@@ -889,20 +889,20 @@ void Estimator::EstimateLidarPose(std::list<LidarFrame>& lidarFrameList,
     for(const auto& f : lidarFrameList) {
         laserCloudCornerLast[stack_count]->clear();
         for(const auto& p : f.laserCloud->points){
-        if(std::fabs(p.normal_z - 1.0/*corner*/) < 1e-5)
-            laserCloudCornerLast[stack_count]->push_back(p);
+            if(std::fabs(p.normal_z - 1.0/*corner*/) < 1e-5)
+                laserCloudCornerLast[stack_count]->push_back(p);
         }
 
         laserCloudSurfLast[stack_count]->clear();
         for(const auto& p : f.laserCloud->points){
-        if(std::fabs(p.normal_z - 2.0/*surf*/) < 1e-5)
-            laserCloudSurfLast[stack_count]->push_back(p);
+            if(std::fabs(p.normal_z - 2.0/*surf*/) < 1e-5)
+                laserCloudSurfLast[stack_count]->push_back(p);
         }
 
         laserCloudNonFeatureLast[stack_count]->clear();
         for(const auto& p : f.laserCloud->points){
-        if(std::fabs(p.normal_z - 3.0/*non*/) < 1e-5)
-            laserCloudNonFeatureLast[stack_count]->push_back(p);
+            if(std::fabs(p.normal_z - 3.0/*non*/) < 1e-5)
+                laserCloudNonFeatureLast[stack_count]->push_back(p);
         }
 
         laserCloudCornerStack[stack_count]->clear();
